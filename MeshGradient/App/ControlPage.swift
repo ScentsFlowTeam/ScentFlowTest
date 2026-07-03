@@ -20,7 +20,6 @@ struct ControlPage: View {
 
     @StateObject private var vm = GradientWheelViewModel()
 
-    @State private var showScanner = false
     @State private var controlsExpanded = false
     @State private var didInitialLoad = false
     @State private var isHydratingVM = false
@@ -30,6 +29,14 @@ struct ControlPage: View {
 
     private var wheelScale: CGFloat {
         controlsExpanded ? UI.expandedScale : UI.collapsedScale
+    }
+
+    private var selectedDevice: Device? {
+        app.devicesService.selected ?? app.devicesService.devices.first
+    }
+
+    private var navigationDeviceName: String {
+        selectedDevice?.name ?? "Device"
     }
 
     private func persist(_ settings: GradientWheelViewModel.WheelSettings) {
@@ -70,32 +77,6 @@ struct ControlPage: View {
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
-                HStack(spacing: 12) {
-                    DeviceMenuBar(
-                        devicesService: app.devicesService,
-                        showScanner: $showScanner,
-                        onSelect: { device in
-                            app.devicesService.select(device.id)
-                            loadDeviceIntoVM(device)
-                        }
-                    )
-                    .frame(maxWidth: .infinity)
-
-                    if let selectedDevice = app.devicesService.selected ?? app.devicesService.devices.first {
-                        NavigationLink {
-                            DeviceInfoPage(device: selectedDevice)
-                        } label: {
-                            Image(systemName: "info.circle")
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundStyle(.secondary)
-                                .frame(width: 28, height: 28)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-//                .padding(.top, 4)
-                .padding(.horizontal, 16)
-
                 GradientContainerCircle(
                     colors: vm.selectedColorsWeighted,
                     animate: vm.isPowerOn,
@@ -132,12 +113,29 @@ struct ControlPage: View {
             }
         }
 
-        .sheet(isPresented: $showScanner) {
-            ScannerSheet()
+        .navigationTitle(navigationDeviceName)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                if let selectedDevice {
+                    NavigationLink {
+                        DeviceInfoPage(device: selectedDevice)
+                    } label: {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 18, weight: .semibold))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
         }
         .onReceive(vm.settingsPublisher) { settings in
             guard !isHydratingVM else { return }
             persist(settings)
+        }
+        .onChange(of: vm.isPowerOn) { _, _ in
+            guard !isHydratingVM else { return }
+            persist(vm.exportSettings())
         }
         .task {
             guard !didInitialLoad else { return }

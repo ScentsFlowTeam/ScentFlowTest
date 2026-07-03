@@ -61,7 +61,7 @@ struct ScannerSheet: View {
                 }
             }
             .background(Color.black.opacity(0.95).ignoresSafeArea())
-            .navigationTitle("Scan Code")
+//            .navigationTitle("Scan Code")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Close") { dismiss() }

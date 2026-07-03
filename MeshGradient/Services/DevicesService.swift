@@ -67,7 +67,9 @@ final class DevicesService: ObservableObject {
     /// Saves an opaque settings snapshot on the selected device.
     func saveSettingsBlobForSelected(_ data: Data) {
         guard let id = selectedID, let i = devices.firstIndex(where: { $0.id == id }) else { return }
-        devices[i].savedSettingsBlob = data
+        var updated = devices
+        updated[i].savedSettingsBlob = data
+        devices = updated
         persist()
     }
 

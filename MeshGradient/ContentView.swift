@@ -11,11 +11,10 @@ struct ContentView: View {
 
     var body: some View {
         TabView {
-            Tab("Control", systemImage: "circle.hexagonpath.fill") {
+            Tab("Device", systemImage: "circle.hexagonpath.fill") {
                 NavigationStack {
-                    // ControlPage now reads AppModel from the environment (no params)
-                    ControlPage()
-                        .customTopBar("ScentsFlow")
+                    DevicesPage()
+                        .customTopBar("Devices")
                 }
             }
 
