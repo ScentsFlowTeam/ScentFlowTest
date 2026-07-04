@@ -4,6 +4,7 @@ struct RetroPlayerDisplay: View {
     enum DisplayState: Equatable {
         case deviceOff
         case playing(title: String, position: Int?, total: Int)
+        case podChange(message: String)
 
         var statusText: String {
             switch self {
@@ -11,6 +12,8 @@ struct RetroPlayerDisplay: View {
                 return "Device Off"
             case .playing:
                 return "Device On"
+            case .podChange:
+                return ""
             }
         }
 
@@ -19,7 +22,9 @@ struct RetroPlayerDisplay: View {
             case .deviceOff:
                 return "Standby"
             case .playing(let title, _, _):
-                return "Now Playing - \(title)"
+                return title
+            case .podChange(let message):
+                return message
             }
         }
 
@@ -30,6 +35,8 @@ struct RetroPlayerDisplay: View {
             case .playing(_, let position, let total):
                 guard let position, total > 0 else { return nil }
                 return "\(position)/\(total)"
+            case .podChange:
+                return nil
             }
         }
     }
@@ -38,70 +45,76 @@ struct RetroPlayerDisplay: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(state.statusText)
-                    .font(.system(.caption, design: .monospaced).weight(.semibold))
-                    .textCase(.uppercase)
+            switch state {
+            case .podChange(let message):
+                Text(message)
+                    .font(.system(.title3, design: .monospaced).weight(.semibold))
                     .foregroundStyle(primaryDisplayColor)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .multilineTextAlignment(.center)
 
-                Spacer(minLength: 12)
+            case .deviceOff, .playing:
+                ZStack(alignment: .trailing) {
+                    Text(state.detailText)
+                        .font(.system(.title3, design: .monospaced).weight(.semibold))
+                        .foregroundStyle(primaryDisplayColor)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .multilineTextAlignment(.center)
 
-                if let counterText = state.counterText {
-                    Text(counterText)
-                        .font(.system(.caption, design: .monospaced).weight(.semibold))
-                        .foregroundStyle(primaryDisplayColor.opacity(0.9))
+                    if let counterText = state.counterText {
+                        Text(counterText)
+                            .font(.system(.caption, design: .monospaced).weight(.semibold))
+                            .foregroundStyle(primaryDisplayColor.opacity(0.9))
+                            .lineLimit(1)
+                    }
                 }
+//
+//              displayMeter
             }
-
-            Text(state.detailText)
-                .font(.system(.subheadline, design: .monospaced).weight(.medium))
-                .foregroundStyle(primaryDisplayColor)
-                .lineLimit(1)
-                .minimumScaleFactor(0.65)
-
-            displayMeter
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-//        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
-        .background(Color(.black), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+        .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
+        .padding(16)
+        .frame(maxWidth: .infinity, minHeight: 72, alignment: .center)
+//        .background(.ultraThinMaterial, in: ConcentricRectangle())
+        .background(Color(.black), in: ConcentricRectangle())
     }
 
     private var primaryDisplayColor: Color {
         switch state {
         case .deviceOff:
             return .white.opacity(0.58)
-        case .playing:
+        case .playing, .podChange:
             return .white
         }
     }
-
-    private var displayMeter: some View {
-        HStack(spacing: 4) {
-            ForEach(0..<18, id: \.self) { index in
-                Capsule()
-                    .fill(meterColor(for: index))
-                    .frame(width: 3.5, height: meterHeight(for: index))
-            }
-
-            Spacer(minLength: 0)
-        }
-        .frame(height: 14, alignment: .bottom)
-        .opacity(state == .deviceOff ? 0.35 : 1.0)
-    }
-
-    private func meterColor(for index: Int) -> Color {
-        switch state {
-        case .deviceOff:
-            return .white.opacity(0.22)
-        case .playing:
-            return index.isMultiple(of: 5) ? .white : .white.opacity(0.78)
-        }
-    }
-
-    private func meterHeight(for index: Int) -> CGFloat {
-        let pattern: [CGFloat] = [4, 7, 11, 6, 13, 8]
-        return pattern[index % pattern.count]
-    }
+//
+//    private var displayMeter: some View {
+//        HStack(spacing: 4) {
+//            ForEach(0..<18, id: \.self) { index in
+//                Capsule()
+//                    .fill(meterColor(for: index))
+//                    .frame(width: 3.5, height: meterHeight(for: index))
+//            }
+//
+//            Spacer(minLength: 0)
+//        }
+//        .frame(height: 14, alignment: .bottom)
+//        .opacity(state == .deviceOff ? 0.35 : 1.0)
+//    }
+//
+//    private func meterColor(for index: Int) -> Color {
+//        switch state {
+//        case .deviceOff:
+//            return .white.opacity(0.22)
+//        case .playing:
+//            return index.isMultiple(of: 5) ? .white : .white.opacity(0.78)
+//        }
+//    }
+//
+//    private func meterHeight(for index: Int) -> CGFloat {
+//        let pattern: [CGFloat] = [4, 7, 11, 6, 13, 8]
+//        return pattern[index % pattern.count]
+//    }
 }

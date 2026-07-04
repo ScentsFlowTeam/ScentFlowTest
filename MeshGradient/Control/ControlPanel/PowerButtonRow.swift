@@ -94,8 +94,13 @@ struct PowerButtonRow: View {
             .padding(.trailing, 16)
         }
         .frame(maxWidth: .infinity, alignment: .center)
-        .frame(maxHeight: 72)
-        .background(.red, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+        .frame(height: 72)
+        .background(.ultraThickMaterial, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 32, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+        }
+        .shadow(color: Color.black.opacity(0.35), radius: 14, x: 0, y: -8)
         .accessibilityElement(children: .contain)
         
     }

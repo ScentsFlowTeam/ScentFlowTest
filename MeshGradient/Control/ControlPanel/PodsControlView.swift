@@ -10,6 +10,7 @@ import SwiftUI
 struct PodsControlView: View {
     @ObservedObject var vm: GradientWheelViewModel
     @Binding var isExpanded: Bool
+    var onPodIntensityChanged: (ScentPod, Double) -> Void = { _, _ in }
 
     private enum UI {
         static let opacityRowHeight: CGFloat = 24
@@ -41,7 +42,10 @@ struct PodsControlView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 12)
-        .background(.red.opacity(0.8), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+//        .overlay {
+//            RoundedRectangle(cornerRadius: 14, style: .continuous)
+//                .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
+//        }
         .disabled(!vm.isPowerOn)
         .opacity(vm.isPowerOn ? 1.0 : 0.45)
         .animation(.easeInOut(duration: 0.2), value: vm.isPowerOn)
@@ -137,7 +141,13 @@ struct PodsControlView: View {
     private func bindingForCollapsedStepper(podID: UUID) -> Binding<Double> {
         Binding(
             get: { vm.opacities[podID] ?? 0 },
-            set: { vm.setOpacity($0, for: podID) }
+            set: { newValue in
+                vm.setOpacity(newValue, for: podID)
+
+                if let pod = vm.pods.first(where: { $0.id == podID }) {
+                    onPodIntensityChanged(pod, newValue)
+                }
+            }
         )
     }
 
@@ -165,5 +175,9 @@ struct PodsControlView: View {
         }
 
         vm.setOpacity(effective, for: podID)
+
+        if let pod = vm.pods.first(where: { $0.id == podID }) {
+            onPodIntensityChanged(pod, effective)
+        }
     }
 }

@@ -16,22 +16,32 @@ struct ControlsSection: View {
     @State private var showingTemplatesPage = false
     @StateObject private var turnOffTimer = TurnOffTimerController()
     @State private var listButtonBounceToken = 0
+    @State private var temporaryPodDisplay: String?
+    @State private var temporaryPodDisplayTask: Task<Void, Never>?
 
     private enum UI {
-        static let screenReservedHeight: CGFloat = 180
+        static let sectionSpacing: CGFloat = 16
+        static let horizontalBleed: CGFloat = 16
     }
 
     var body: some View {
-        ZStack(alignment: .top) {
-            controlsStack
-                .padding(.top, UI.screenReservedHeight)
-
+        VStack(spacing: UI.sectionSpacing) {
             screenPart
-                .padding(-16)
+                .padding(.horizontal, -UI.horizontalBleed)
                 .zIndex(1)
+
+            PodsControlView(
+                vm: vm,
+                isExpanded: $isExpanded,
+                onPodIntensityChanged: { pod, value in
+                    showTemporaryPodDisplay(for: pod, value: value)
+                }
+            )
+
+            powerButtonRow
+                .padding(.horizontal, -UI.horizontalBleed)
         }
         .frame(maxWidth: .infinity, alignment: .top)
-//        .padding(.bottom, 16)
         .alert("Save Template", isPresented: $showingSaveAlert) {
             TextField("Template name", text: $newTemplateName)
                 .textInputAutocapitalization(.words)
@@ -62,70 +72,67 @@ struct ControlsSection: View {
                 turnOffTimer.clear()
             }
         }
+        .onDisappear {
+            temporaryPodDisplayTask?.cancel()
+        }
     }
 
-    private var controlsStack: some View {
-        VStack(spacing: 16) {
-            PodsControlView(
-                vm: vm,
-                isExpanded: $isExpanded
-            )
-
-            PowerButtonRow(
-                isOn: vm.isPowerOn,
-                speed: vm.fanSpeed,
-                onToggle: {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-                        vm.togglePower()
-                    }
-                },
-                onChangeSpeed: { vm.setFanSpeed($0) },
-                showsTemplateTransport: !app.templatesService.templates.isEmpty,
-                canGoPrevious: vm.isUsingTemplate && app.templatesService.canGoPrevious,
-                canGoNext: vm.isUsingTemplate && app.templatesService.canGoNext,
-                onPrevious: {
-                    app.applyPreviousTemplate(to: vm, on: device)
-                },
-                onNext: {
-                    app.applyNextTemplate(to: vm, on: device)
-                },
-                onOpenTemplates: {
-                    showingTemplatesPage = true
-                },
-                turnOffTimer: turnOffTimer,
-                onStartTurnOffTimer: { duration in
-                    turnOffTimer.start(duration: duration) {
-                        if vm.isPowerOn {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-                                vm.setPower(false)
-                            }
+    private var powerButtonRow: some View {
+        PowerButtonRow(
+            isOn: vm.isPowerOn,
+            speed: vm.fanSpeed,
+            onToggle: {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
+                    vm.togglePower()
+                }
+            },
+            onChangeSpeed: { vm.setFanSpeed($0) },
+            showsTemplateTransport: !app.templatesService.templates.isEmpty,
+            canGoPrevious: vm.isUsingTemplate && app.templatesService.canGoPrevious,
+            canGoNext: vm.isUsingTemplate && app.templatesService.canGoNext,
+            onPrevious: {
+                app.applyPreviousTemplate(to: vm, on: device)
+            },
+            onNext: {
+                app.applyNextTemplate(to: vm, on: device)
+            },
+            onOpenTemplates: {
+                showingTemplatesPage = true
+            },
+            turnOffTimer: turnOffTimer,
+            onStartTurnOffTimer: { duration in
+                turnOffTimer.start(duration: duration) {
+                    if vm.isPowerOn {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
+                            vm.setPower(false)
                         }
                     }
-                },
-                onCancelTurnOffTimer: {
-                    turnOffTimer.clear()
-                },
-                listButtonBounceToken: listButtonBounceToken
-            )
-            .padding( -16)
-        }
-        .frame(maxWidth: .infinity, alignment: .top)
+                }
+            },
+            onCancelTurnOffTimer: {
+                turnOffTimer.clear()
+            },
+            listButtonBounceToken: listButtonBounceToken
+        )
     }
 
     private var screenPart: some View {
-        ZStack(alignment: .topTrailing) {
+        let shape = RoundedRectangle(cornerRadius: 32, style: .continuous)
+
+        return ZStack(alignment: .topTrailing) {
             RetroPlayerDisplay(state: playerDisplayState)
-                .padding(16)
+                .padding(12)
 
 //            saveTemplateButton
         }
         .frame(maxWidth: .infinity)
-        .background(.red, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+        .containerShape(shape)
+        .background(.ultraThickMaterial, in: shape)
         .overlay {
-            RoundedRectangle(cornerRadius: 32, style: .continuous)
+            shape
                 .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
         }
-//        .shadow(color: Color.black.opacity(0.35), radius: 14, y: 8)
+        .shadow(color: Color.black.opacity(0.35), radius: 14, x: 0, y: 8)
     }
 
     private var currentTemplate: ScentsTemplate? {
@@ -137,6 +144,10 @@ struct ControlsSection: View {
     }
 
     private var playerDisplayState: RetroPlayerDisplay.DisplayState {
+        if let temporaryPodDisplay {
+            return .podChange(message: temporaryPodDisplay)
+        }
+
         guard vm.isPowerOn else { return .deviceOff }
 
         let title = currentTemplate?.name ?? "Unsaved Template"
@@ -149,6 +160,20 @@ struct ControlsSection: View {
             position: position,
             total: app.templatesService.templates.count
         )
+    }
+
+    private func showTemporaryPodDisplay(for pod: ScentPod, value: Double) {
+        let maxIntensity = max(0.0001, AppConfig.maxIntensity)
+        let clamped = min(max(value, 0), maxIntensity)
+        let percent = Int((clamped / maxIntensity * 100).rounded())
+
+        temporaryPodDisplay = "\(pod.name.uppercased()): \(percent)%"
+        temporaryPodDisplayTask?.cancel()
+        temporaryPodDisplayTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            guard !Task.isCancelled else { return }
+            temporaryPodDisplay = nil
+        }
     }
 
     private var saveTemplateButton: some View {

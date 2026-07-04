@@ -72,10 +72,9 @@ struct ControlPageSegmentPanel: View {
             }
             .id(segment)
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 16)
+        .padding(.horizontal, 12)
         .frame(maxHeight: .infinity, alignment: .top)
-        .background(.green, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+        .background(.gray.opacity(0.15), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
         .frame(height: shouldAutoSize ? nil : collapsedHeight, alignment: .bottom)
         .animation(.bouncy, value: shouldAutoSize)
     }
