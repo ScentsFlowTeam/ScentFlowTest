@@ -4,6 +4,10 @@ import UIKit
 struct GradientContainerCircle: View {
     let colors: [Color]
     let fadingDuration: TimeInterval = 0.8
+    private let deviceTransitionDuration: TimeInterval = 0.9
+    private let deviceImageWidthScale: CGFloat = 1.55
+    private let deviceZoomScale: CGFloat = 2.4
+    private let circleDeviceInsetScale: CGFloat = 0.28
     var animate: Bool = true
     var isTemplate: Bool = false
     var meshOpacity: Double = 1.0
@@ -13,6 +17,7 @@ struct GradientContainerCircle: View {
     var onToggle: () -> Void = { }
     
     @Environment(\.colorScheme) private var colorScheme
+    @State private var circleRevealScale: CGFloat = 1.0
     
     var body: some View {
         // Pull themed tokens from AppConfig
@@ -80,9 +85,18 @@ struct GradientContainerCircle: View {
                     .animation(.easeInOut(duration: fadingDuration), value: meshOpacity)
             }
             .aspectRatio(1, contentMode: .fit)
-            // Power-driven raise/drop ONLY
-            .scaleEffect(isOn ? 1.0 : 0.95)
-            .animation(.spring(response: 0.4, dampingFraction: 0.4), value: isOn) // scoped to scale
+            .scaleEffect(circleScale)
+            .opacity(isTemplate || isOn ? 1 : 0)
+            .animation(.easeInOut(duration: deviceTransitionDuration), value: isOn)
+            
+            if !isTemplate {
+                DevicePowerTransitionImage(
+                    isOn: isOn,
+                    widthScale: deviceImageWidthScale,
+                    zoomScale: deviceZoomScale,
+                    transitionDuration: deviceTransitionDuration
+                )
+            }
 //
 //            // Power Button Testing
 //            if !isTemplate {
@@ -101,8 +115,33 @@ struct GradientContainerCircle: View {
 //            }
 
         }
+        .onAppear {
+            circleRevealScale = isOn ? 1.0 : circleDeviceInsetScale
+        }
+        .onChange(of: isOn) { _, newValue in
+            updateCircleRevealScale(for: newValue)
+        }
         
         
+    }
+    
+    private var circleScale: CGFloat {
+        guard !isTemplate else { return 1.0 }
+        return circleRevealScale
+    }
+    
+    private func updateCircleRevealScale(for isOn: Bool) {
+        if isOn {
+            circleRevealScale = circleDeviceInsetScale
+            withAnimation(.easeInOut(duration: deviceTransitionDuration)) {
+                circleRevealScale = 1.0
+            }
+            return
+        }
+        
+        withAnimation(.easeInOut(duration: deviceTransitionDuration)) {
+            circleRevealScale = circleDeviceInsetScale
+        }
     }
     
     
@@ -122,6 +161,31 @@ struct GradientContainerCircle: View {
             
         }
         
+    }
+}
+
+private struct DevicePowerTransitionImage: View {
+    let isOn: Bool
+    let widthScale: CGFloat
+    let zoomScale: CGFloat
+    let transitionDuration: TimeInterval
+    
+    var body: some View {
+        GeometryReader { geo in
+            let side = min(geo.size.width, geo.size.height)
+            
+            Image("device_black")
+                .resizable()
+                .scaledToFit()
+                .frame(width: side * widthScale)
+                .scaleEffect(isOn ? zoomScale : 1.0, anchor: .center)
+                .opacity(isOn ? 0 : 1)
+                .position(x: geo.size.width / 2, y: geo.size.height / 2)
+                .animation(.easeInOut(duration: transitionDuration), value: isOn)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
+        .aspectRatio(1, contentMode: .fit)
     }
 }
 
