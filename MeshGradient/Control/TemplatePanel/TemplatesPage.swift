@@ -193,7 +193,7 @@ private struct TemplateListRow: View {
             }
         }
         .padding(14)
-        .adaptiveGlassBackground(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private var podNamesText: String {

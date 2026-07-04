@@ -64,7 +64,8 @@ struct RetroPlayerDisplay: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .controlConcentricFilledBackground(.black)
+//        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+        .background(Color(.black), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
     }
 
     private var primaryDisplayColor: Color {

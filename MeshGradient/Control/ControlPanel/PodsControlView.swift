@@ -41,7 +41,7 @@ struct PodsControlView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 12)
-        .adaptiveGlassBackground(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(.black.opacity(0.8), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .disabled(!vm.isPowerOn)
         .opacity(vm.isPowerOn ? 1.0 : 0.45)
         .animation(.easeInOut(duration: 0.2), value: vm.isPowerOn)

@@ -63,37 +63,19 @@ struct PodIntensitySlider: View {
 
     @ViewBuilder
     private var thumb: some View {
-        if #available(iOS 26.0, *) {
-            if isDragging {
-                Circle()
-//                    .fill(.clear)
-                    .glassEffect(.clear, in: Circle())
-//                    .overlay {
-//                        Circle()
-//                            .fill(effectiveColor.opacity(0.18))
-//                    }
-                    .frame(width: effectiveThumbSize, height: effectiveThumbSize)
-                    .scaleEffect(1.03)
-            } else {
-                Circle()
-                    .fill(effectiveColor.opacity(isDimmed ? 0.75 : 1.0))
-                    .frame(width: effectiveThumbSize, height: effectiveThumbSize)
-            }
+        if isDragging {
+            Circle()
+                .fill(.ultraThinMaterial)
+                .overlay {
+                    Circle()
+                        .fill(effectiveColor.opacity(0.18))
+                }
+                .frame(width: effectiveThumbSize, height: effectiveThumbSize)
+                .scaleEffect(1.03)
         } else {
-            if isDragging {
-                Circle()
-                    .fill(.ultraThinMaterial)
-                    .overlay {
-                        Circle()
-                            .fill(effectiveColor.opacity(0.18))
-                    }
-                    .frame(width: effectiveThumbSize, height: effectiveThumbSize)
-                    .scaleEffect(1.03)
-            } else {
-                Circle()
-                    .fill(effectiveColor.opacity(isDimmed ? 0.75 : 1.0))
-                    .frame(width: effectiveThumbSize, height: effectiveThumbSize)
-            }
+            Circle()
+                .fill(effectiveColor.opacity(isDimmed ? 0.75 : 1.0))
+                .frame(width: effectiveThumbSize, height: effectiveThumbSize)
         }
     }
 

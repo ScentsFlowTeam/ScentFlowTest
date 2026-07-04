@@ -119,11 +119,12 @@ struct ControlsSection: View {
 //            saveTemplateButton
         }
         .frame(maxWidth: .infinity)
-        .controlConcentricFilledBackground(
-            Color.black.opacity(0.28),
-            stroke: Color.white.opacity(0.08)
-        )
-        .shadow(color: Color.black.opacity(0.35), radius: 14, y: 8)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 32, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+        }
+//        .shadow(color: Color.black.opacity(0.35), radius: 14, y: 8)
     }
 
     private var currentTemplate: ScentsTemplate? {
