@@ -170,7 +170,7 @@ private struct DevicePowerTransitionImage: View {
                 .scaledToFit()
                 .frame(width: side * widthScale)
                 .scaleEffect(isOn ? zoomScale : 1.0, anchor: .center)
-                .opacity(isOn ? 0 : 0.8)
+                .opacity(isOn ? 0 : 0.5)
                 .position(x: geo.size.width / 2, y: geo.size.height / 2)
                 .animation(.easeInOut(duration: transitionDuration), value: isOn)
                 .allowsHitTesting(false)

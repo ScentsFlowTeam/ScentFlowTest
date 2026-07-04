@@ -22,6 +22,8 @@ struct ControlsSection: View {
     private enum UI {
         static let sectionSpacing: CGFloat = 12
         static let horizontalBleed: CGFloat = 16
+        static let screenPartRadius = ControlCornerStyle.radius
+        static let screenPartInset: CGFloat = 16
     }
 
     var body: some View {
@@ -117,15 +119,14 @@ struct ControlsSection: View {
     }
 
     private var screenPart: some View {
-        let shape = RoundedRectangle(cornerRadius: 32, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: UI.screenPartRadius, style: .continuous)
 
         return VStack(spacing: 10) {
             RetroPlayerDisplay(state: playerDisplayState)
 
             templateActionRow
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(UI.screenPartInset)
         .frame(maxWidth: .infinity)
         .containerShape(shape)
         .background(.ultraThickMaterial, in: shape)

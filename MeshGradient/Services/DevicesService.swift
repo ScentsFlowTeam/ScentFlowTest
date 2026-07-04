@@ -28,7 +28,13 @@ final class DevicesService: ObservableObject {
     func load() async {
         let loaded = await local.loadAll()
         devices = loaded.devices
-        selectedID = loaded.selectedID ?? devices.first?.id
+
+        if let currentID = selectedID,
+           devices.contains(where: { $0.id == currentID }) {
+            selectedID = currentID
+        } else {
+            selectedID = loaded.selectedID ?? devices.first?.id
+        }
 
         if devices.isEmpty {
             seedMockIfNeeded()

@@ -77,8 +77,15 @@ struct RetroPlayerDisplay: View {
         .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
         .padding(16)
         .frame(maxWidth: .infinity, minHeight: 72, alignment: .center)
-//        .background(.ultraThinMaterial, in: ConcentricRectangle())
-        .background(Color(.black.opacity(0.8)), in: ConcentricRectangle())
+        .background {
+            if #available(iOS 26.0, *) {
+                ConcentricRectangle(corners: .concentric(minimum: 16), isUniform: true)
+                    .fill(Color.black.opacity(0.8))
+            } else {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.black.opacity(0.8))
+            }
+        }
     }
 
     private var primaryDisplayColor: Color {
