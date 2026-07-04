@@ -6,7 +6,7 @@ struct GradientContainerCircle: View {
     let fadingDuration: TimeInterval = 0.8
     private let deviceTransitionDuration: TimeInterval = 0.9
     private let deviceImageWidthScale: CGFloat = 1.55
-    private let deviceZoomScale: CGFloat = 2.4
+    private let deviceZoomScale: CGFloat = 3
     private let circleDeviceInsetScale: CGFloat = 0.28
     var animate: Bool = true
     var isTemplate: Bool = false
@@ -68,15 +68,6 @@ struct GradientContainerCircle: View {
                     )
                     .opacity(isOn ? 0.95 : 0.9)
                     .animation(.easeInOut(duration: fadingDuration), value: isOn)
-                
-                
-                
-                // Glass ring
-                GlassRing(width: tokens.rimWidth, isOn: isOn)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-                    .animation(.easeInOut(duration: fadingDuration), value: isOn)
-                
                 // Main mesh content inside the ring
                 MeshColorCircle(colors: displayColors.isEmpty ?  [.white.opacity(0.1),.white.opacity(0),.white.opacity(0.05),.white.opacity(0.05),.white.opacity(0.25)] : displayColors , animate: animate)
                     //.padding(tokens.rimWidth)
@@ -179,7 +170,7 @@ private struct DevicePowerTransitionImage: View {
                 .scaledToFit()
                 .frame(width: side * widthScale)
                 .scaleEffect(isOn ? zoomScale : 1.0, anchor: .center)
-                .opacity(isOn ? 0 : 1)
+                .opacity(isOn ? 0 : 0.8)
                 .position(x: geo.size.width / 2, y: geo.size.height / 2)
                 .animation(.easeInOut(duration: transitionDuration), value: isOn)
                 .allowsHitTesting(false)
