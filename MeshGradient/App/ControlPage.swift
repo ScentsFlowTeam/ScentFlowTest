@@ -106,7 +106,7 @@ struct ControlPage: View {
                     collapsedHeight: UI.collapsedCardHeight
                 )
 //                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .containerShape(.rect(cornerRadius: 32, style: .continuous))
+                .containerShape(.rect(cornerRadius: ControlCornerStyle.radius, style: .continuous))
                 .padding(.horizontal, UI.cardHPad)
                 .padding(.bottom, UI.cardBottomPad)
 //                .shadow(radius: 6)

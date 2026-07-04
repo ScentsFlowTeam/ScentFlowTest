@@ -75,10 +75,7 @@ struct ControlPageSegmentPanel: View {
         .padding(.horizontal, 16)
         .padding(.top, 16)
         .frame(maxHeight: .infinity, alignment: .top)
-        .adaptiveGlassBackground(
-            RoundedRectangle(cornerRadius: 16, style: .continuous),
-            useConcentricOnIOS26: true
-        )
+        .controlConcentricGlassBackground()
         .frame(height: shouldAutoSize ? nil : collapsedHeight, alignment: .bottom)
         .animation(.bouncy, value: shouldAutoSize)
     }

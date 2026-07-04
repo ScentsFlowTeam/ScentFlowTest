@@ -17,10 +17,55 @@ struct ControlsSection: View {
     @StateObject private var turnOffTimer = TurnOffTimerController()
     @State private var listButtonBounceToken = 0
 
-    var body: some View {
-        VStack(spacing: 16) {
-            currentTemplateHeaderView
+    private enum UI {
+        static let screenReservedHeight: CGFloat = 132
+    }
 
+    var body: some View {
+        ZStack(alignment: .top) {
+            controlsStack
+                .padding(.top, UI.screenReservedHeight)
+
+            screenPart
+                .padding(-16)
+                .zIndex(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .top)
+        .padding(.bottom, 16)
+        .alert("Save Template", isPresented: $showingSaveAlert) {
+            TextField("Template name", text: $newTemplateName)
+                .textInputAutocapitalization(.words)
+                .disableAutocorrection(true)
+
+            Button("Save") {
+                let name = newTemplateName.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !name.isEmpty else { return }
+                saveCurrentTemplate(named: name)
+                newTemplateName = ""
+            }
+
+            Button("Cancel", role: .cancel) {
+                newTemplateName = ""
+            }
+        } message: {
+            Text("Enter a name for this scent mix.")
+        }
+        .navigationDestination(isPresented: $showingTemplatesPage) {
+            TemplatesPage(
+                templatesService: app.templatesService,
+                vm: vm,
+                device: device
+            )
+        }
+        .onChange(of: vm.isPowerOn) { _, isOn in
+            if !isOn {
+                turnOffTimer.clear()
+            }
+        }
+    }
+
+    private var controlsStack: some View {
+        VStack(spacing: 16) {
             PodsControlView(
                 vm: vm,
                 isExpanded: $isExpanded
@@ -63,75 +108,64 @@ struct ControlsSection: View {
                 listButtonBounceToken: listButtonBounceToken
             )
         }
-        .padding(.bottom, 16)
-        .alert("Save Template", isPresented: $showingSaveAlert) {
-            TextField("Template name", text: $newTemplateName)
-                .textInputAutocapitalization(.words)
-                .disableAutocorrection(true)
-
-            Button("Save") {
-                let name = newTemplateName.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !name.isEmpty else { return }
-                saveCurrentTemplate(named: name)
-                newTemplateName = ""
-            }
-
-            Button("Cancel", role: .cancel) {
-                newTemplateName = ""
-            }
-        } message: {
-            Text("Enter a name for this scent mix.")
-        }
-        .navigationDestination(isPresented: $showingTemplatesPage) {
-            TemplatesPage(
-                templatesService: app.templatesService,
-                vm: vm,
-                device: device
-            )
-        }
-        .onChange(of: vm.isPowerOn) { _, isOn in
-            if !isOn {
-                turnOffTimer.clear()
-            }
-        }
+        .frame(maxWidth: .infinity, alignment: .top)
     }
 
-    private var currentTemplateName: String {
+    private var screenPart: some View {
+        ZStack(alignment: .topTrailing) {
+            RetroPlayerDisplay(state: playerDisplayState)
+                .padding(16)
+
+//            saveTemplateButton
+        }
+        .frame(maxWidth: .infinity)
+        .controlConcentricFilledBackground(
+            Color.black.opacity(0.28),
+            stroke: Color.white.opacity(0.08)
+        )
+        .shadow(color: Color.black.opacity(0.35), radius: 14, y: 8)
+    }
+
+    private var currentTemplate: ScentsTemplate? {
         guard vm.isUsingTemplate,
-              let id = vm.currentTemplateID,
-              let template = app.templatesService.templates.first(where: { $0.id == id })
-        else {
-            return "Unsaved Template"
-        }
-        return template.name
+              let id = vm.currentTemplateID
+        else { return nil }
+
+        return app.templatesService.templates.first(where: { $0.id == id })
     }
 
-    private var currentTemplateHeaderView: some View {
-        ZStack {
-            Text(currentTemplateName)
-                .font(.headline)
-                .foregroundStyle(vm.isUsingTemplate ? .primary : .secondary)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+    private var playerDisplayState: RetroPlayerDisplay.DisplayState {
+        guard vm.isPowerOn else { return .deviceOff }
 
-            HStack {
-                Spacer()
+        let title = currentTemplate?.name ?? "Unsaved Template"
+        let position = currentTemplate.flatMap { template in
+            app.templatesService.templates.firstIndex(where: { $0.id == template.id }).map { $0 + 1 }
+        }
 
-                Button {
-                    newTemplateName = "Mix \(app.templatesService.templates.count + 1)"
-                    showingSaveAlert = true
-                } label: {
-                    Image(systemName: "square.and.arrow.down")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(vm.included.isEmpty ? .secondary : .primary)
-                        .frame(width: 32, height: 32)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .disabled(vm.included.isEmpty)
-                .opacity(vm.included.isEmpty ? 0.45 : 1.0)
+        return .playing(
+            title: title,
+            position: position,
+            total: app.templatesService.templates.count
+        )
+    }
+
+    private var saveTemplateButton: some View {
+        HStack {
+            Spacer()
+
+            Button {
+                newTemplateName = "Mix \(app.templatesService.templates.count + 1)"
+                showingSaveAlert = true
+            } label: {
+                Image(systemName: "square.and.arrow.down")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(vm.included.isEmpty ? .secondary : .primary)
+                    .frame(width: 32, height: 32)
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .disabled(vm.included.isEmpty)
+            .opacity(vm.included.isEmpty ? 0.45 : 1.0)
         }
     }
 
