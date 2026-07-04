@@ -17,6 +17,7 @@ struct DevicesPage: View {
             } else {
                 DevicesContentView(
                     devicesService: app.devicesService,
+                    notificationService: app.deviceNotificationsService,
                     onOpen: open,
                     onAddDevice: { showingScanner = true },
                     onReload: reloadDevices
@@ -62,8 +63,9 @@ struct DevicesPage: View {
     private func reloadDevices() async {
         isLoading = true
         async let load: Void = app.devicesService.load()
+        async let notifications: Void = app.deviceNotificationsService.refreshRemoteNotifications()
         async let delay: Void = simulatedNetworkDelay()
-        _ = await (load, delay)
+        _ = await (load, notifications, delay)
         isLoading = false
     }
 
@@ -74,6 +76,7 @@ struct DevicesPage: View {
 
 private struct DevicesContentView: View {
     @ObservedObject var devicesService: DevicesService
+    @ObservedObject var notificationService: DeviceNotificationsService
 
     let onOpen: (Device) -> Void
     let onAddDevice: () -> Void
@@ -82,8 +85,6 @@ private struct DevicesContentView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-//                headerView
-
                 if devicesService.devices.isEmpty {
                     emptyStateView
                 } else {
@@ -112,22 +113,26 @@ private struct DevicesContentView: View {
         .refreshable {
             await onReload()
         }
+        .navigationTitle("Devices")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                DeviceNotificationsButton(
+                    notifications: notificationService.notifications,
+                    devices: devicesService.devices
+                )
+            }
+        }
     }
-
-//    private var headerView: some View {
-//        Text("Choose a diffuser to control")
-//            .font(.subheadline)
-//            .foregroundStyle(.secondary)
-//    }
 
     private var addDeviceButton: some View {
         Button(action: onAddDevice) {
-            Label("Add device", systemImage: "qrcode.viewfinder")
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .frame(height: 52)
+            Image(systemName: "plus")
+                .font(.system(size: 18, weight: .semibold))
+                .frame(width: 44, height: 44)
         }
         .buttonStyle(.glass)
+        .clipShape(Circle())
         .accessibilityLabel("Add device")
     }
 
@@ -160,7 +165,6 @@ private struct DevicesContentView: View {
 #Preview {
     NavigationStack {
         DevicesPage()
-            .customTopBar("Devices")
     }
     .environmentObject(AppModel())
     .preferredColorScheme(.dark)

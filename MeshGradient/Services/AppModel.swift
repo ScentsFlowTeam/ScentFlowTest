@@ -13,6 +13,7 @@ final class AppModel: ObservableObject {
     let sessionService: SessionService
     let templatesService: TemplatesService
     let devicesService: DevicesService
+    let deviceNotificationsService: DeviceNotificationsService
     let controlService: ControlService
     let syncEngine: SyncEngine
 
@@ -24,18 +25,26 @@ final class AppModel: ObservableObject {
         sessionService: SessionService,
         templatesService: TemplatesService,
         devicesService: DevicesService,
+        deviceNotificationsService: DeviceNotificationsService,
         controlService: ControlService,
         syncEngine: SyncEngine
     ) {
         self.sessionService = sessionService
         self.templatesService = templatesService
         self.devicesService = devicesService
+        self.deviceNotificationsService = deviceNotificationsService
         self.controlService = controlService
         self.syncEngine = syncEngine
 
         // Load local cache immediately
         Task { await templatesService.load() }
         Task { await devicesService.load() }
+
+        devicesService.$devices
+            .sink { [weak self] devices in
+                self?.deviceNotificationsService.refresh(from: devices)
+            }
+            .store(in: &bag)
 
         // Start/stop sync based on session state (safe no-op for now)
         sessionService.$state
@@ -61,6 +70,7 @@ final class AppModel: ObservableObject {
             sessionService: SessionService(),
             templatesService: TemplatesService(local: LocalTemplatesRepository()),
             devicesService: DevicesService(local: LocalDevicesRepository()),
+            deviceNotificationsService: DeviceNotificationsService(),
             controlService: ControlService(),
             syncEngine: SyncEngine()
         )

@@ -14,7 +14,6 @@ struct ContentView: View {
             Tab("Device", systemImage: "circle.hexagonpath.fill") {
                 NavigationStack {
                     DevicesPage()
-                        .customTopBar("Devices")
                 }
             }
 
