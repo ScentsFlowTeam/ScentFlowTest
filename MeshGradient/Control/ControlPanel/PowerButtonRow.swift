@@ -58,6 +58,7 @@ struct PowerButtonRow: View {
                 onStart: onStartTurnOffTimer,
                 onCancel: onCancelTurnOffTimer
             )
+            .padding(.leading, 16)
 
             Spacer()
             
@@ -90,9 +91,13 @@ struct PowerButtonRow: View {
                 action: onOpenTemplates,
                 bounceToken: listButtonBounceToken
             )
+            .padding(.trailing, 16)
         }
         .frame(maxWidth: .infinity, alignment: .center)
+        .frame(maxHeight: 72)
+        .background(.red, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
         .accessibilityElement(children: .contain)
+        
     }
 }
 

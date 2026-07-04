@@ -18,7 +18,7 @@ struct ControlsSection: View {
     @State private var listButtonBounceToken = 0
 
     private enum UI {
-        static let screenReservedHeight: CGFloat = 132
+        static let screenReservedHeight: CGFloat = 180
     }
 
     var body: some View {
@@ -31,7 +31,7 @@ struct ControlsSection: View {
                 .zIndex(1)
         }
         .frame(maxWidth: .infinity, alignment: .top)
-        .padding(.bottom, 16)
+//        .padding(.bottom, 16)
         .alert("Save Template", isPresented: $showingSaveAlert) {
             TextField("Template name", text: $newTemplateName)
                 .textInputAutocapitalization(.words)
@@ -107,6 +107,7 @@ struct ControlsSection: View {
                 },
                 listButtonBounceToken: listButtonBounceToken
             )
+            .padding( -16)
         }
         .frame(maxWidth: .infinity, alignment: .top)
     }
@@ -119,7 +120,7 @@ struct ControlsSection: View {
 //            saveTemplateButton
         }
         .frame(maxWidth: .infinity)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+        .background(.red, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 32, style: .continuous)
                 .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
