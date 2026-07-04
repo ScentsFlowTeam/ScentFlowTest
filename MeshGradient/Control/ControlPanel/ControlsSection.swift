@@ -121,7 +121,7 @@ struct ControlsSection: View {
 
         return ZStack(alignment: .topTrailing) {
             RetroPlayerDisplay(state: playerDisplayState)
-                .padding(12)
+                .padding(16)
 
 //            saveTemplateButton
         }

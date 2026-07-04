@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct DeviceNotificationsButton: View {
     let notifications: [DeviceNotification]
@@ -132,11 +135,60 @@ private struct DeviceNotificationsSheet: View {
         .adaptiveGlassBackground(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
+    private func podImageName(for notification: DeviceNotification) -> String {
+        guard let pod = pod(for: notification) else { return "pod" }
+
+        let imageName = "pods_\(podColorName(for: pod))"
+        return existingImageName(imageName, fallback: "pod")
+    }
+
+    private func pod(for notification: DeviceNotification) -> ScentPod? {
+        guard
+            let deviceID = notification.deviceID,
+            let podID = notification.podID,
+            let device = devices.first(where: { $0.id == deviceID })
+        else { return nil }
+
+        return device.insertedPods.first { $0.id == podID }
+    }
+
+    private func podColorName(for pod: ScentPod) -> String {
+        let color = pod.color
+        let candidates: [(name: String, r: Double, g: Double, b: Double)] = [
+            ("red", 1.0, 0.0, 0.0),
+            ("orange", 1.0, 0.5, 0.0),
+            ("yellow", 1.0, 1.0, 0.0),
+            ("green", 0.0, 1.0, 0.0),
+            ("cyan", 0.0, 1.0, 1.0),
+            ("blue", 0.0, 0.0, 1.0),
+            ("purple", 0.5, 0.0, 0.5),
+        ]
+
+        return candidates.min { lhs, rhs in
+            colorDistance(color, lhs) < colorDistance(color, rhs)
+        }?.name ?? ""
+    }
+
+    private func colorDistance(_ color: RGBAColor, _ candidate: (name: String, r: Double, g: Double, b: Double)) -> Double {
+        let red = color.r - candidate.r
+        let green = color.g - candidate.g
+        let blue = color.b - candidate.b
+        return red * red + green * green + blue * blue
+    }
+
+    private func existingImageName(_ imageName: String, fallback: String) -> String {
+        #if canImport(UIKit)
+        UIImage(named: imageName) == nil ? fallback : imageName
+        #else
+        imageName
+        #endif
+    }
+
     @ViewBuilder
     private func notificationImage(for notification: DeviceNotification) -> some View {
         switch notification.kind {
         case .podLow, .podEmpty:
-            Image("pod")
+            Image(podImageName(for: notification))
                 .resizable()
                 .renderingMode(.original)
                 .scaledToFill()
