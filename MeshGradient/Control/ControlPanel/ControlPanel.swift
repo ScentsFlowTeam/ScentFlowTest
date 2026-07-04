@@ -6,7 +6,7 @@
 
 import SwiftUI
 
-struct ControlPageSegmentPanel: View {
+struct ControlPanel: View {
     @ObservedObject var vm: GradientWheelViewModel
     @ObservedObject var templatesService: TemplatesService
     @ObservedObject var devicesService: DevicesService

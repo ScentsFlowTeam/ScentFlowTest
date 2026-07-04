@@ -78,7 +78,7 @@ struct RetroPlayerDisplay: View {
         .padding(16)
         .frame(maxWidth: .infinity, minHeight: 72, alignment: .center)
 //        .background(.ultraThinMaterial, in: ConcentricRectangle())
-        .background(Color(.black), in: ConcentricRectangle())
+        .background(Color(.black.opacity(0.8)), in: ConcentricRectangle())
     }
 
     private var primaryDisplayColor: Color {
@@ -86,7 +86,7 @@ struct RetroPlayerDisplay: View {
         case .deviceOff:
             return .white.opacity(0.58)
         case .playing, .podChange:
-            return .white
+            return .white.opacity(0.8)
         }
     }
 //

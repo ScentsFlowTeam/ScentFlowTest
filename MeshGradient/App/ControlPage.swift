@@ -97,7 +97,7 @@ struct ControlPage: View {
             VStack {
                 Spacer().frame(minHeight: 30)
 
-                ControlPageSegmentPanel(
+                ControlPanel(
                     vm: vm,
                     templatesService: app.templatesService,
                     devicesService: app.devicesService,
