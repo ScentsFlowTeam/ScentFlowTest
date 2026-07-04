@@ -86,10 +86,9 @@ struct PowerButtonRow: View {
             Spacer()
             
             ControlButton(
-                systemName: "list.bullet",
+                systemName: "shuffle",
                 isEnabled: true,
-                action: onOpenTemplates,
-                bounceToken: listButtonBounceToken
+                action: {}
             )
             .padding(.trailing, 16)
         }

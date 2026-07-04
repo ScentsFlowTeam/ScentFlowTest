@@ -13,7 +13,7 @@ struct ControlPage: View {
         static let collapsedScale: CGFloat = 1.00
         static let cardHPad: CGFloat = 16
         static let cardBottomPad: CGFloat = 16
-        static let collapsedCardHeight: CGFloat = 334
+        static let collapsedCardHeight: CGFloat = 380
     }
 
     @EnvironmentObject private var app: AppModel

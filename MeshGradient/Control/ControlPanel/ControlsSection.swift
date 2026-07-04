@@ -20,7 +20,7 @@ struct ControlsSection: View {
     @State private var temporaryPodDisplayTask: Task<Void, Never>?
 
     private enum UI {
-        static let sectionSpacing: CGFloat = 16
+        static let sectionSpacing: CGFloat = 12
         static let horizontalBleed: CGFloat = 16
     }
 
@@ -119,12 +119,13 @@ struct ControlsSection: View {
     private var screenPart: some View {
         let shape = RoundedRectangle(cornerRadius: 32, style: .continuous)
 
-        return ZStack(alignment: .topTrailing) {
+        return VStack(spacing: 10) {
             RetroPlayerDisplay(state: playerDisplayState)
-                .padding(16)
 
-//            saveTemplateButton
+            templateActionRow
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity)
         .containerShape(shape)
         .background(.ultraThickMaterial, in: shape)
@@ -176,24 +177,67 @@ struct ControlsSection: View {
         }
     }
 
-    private var saveTemplateButton: some View {
-        HStack {
-            Spacer()
+    private var templateActionRow: some View {
+        HStack(spacing: 8) {
+            templateActionButton(
+                title: "Explore",
+                systemName: "sparkles",
+                action: {}
+            )
+            .frame(maxWidth: .infinity)
 
-            Button {
-                newTemplateName = "Mix \(app.templatesService.templates.count + 1)"
-                showingSaveAlert = true
-            } label: {
-                Image(systemName: "square.and.arrow.down")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(vm.included.isEmpty ? .secondary : .primary)
-                    .frame(width: 32, height: 32)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .disabled(vm.included.isEmpty)
-            .opacity(vm.included.isEmpty ? 0.45 : 1.0)
+            templateActionButton(
+                title: "Share",
+                systemName: "square.and.arrow.up",
+                action: {}
+            )
+            .frame(maxWidth: .infinity)
+
+            templateActionButton(
+                title: "Save",
+                systemName: "square.and.arrow.down",
+                isEnabled: !vm.included.isEmpty,
+                action: {
+                    newTemplateName = "Mix \(app.templatesService.templates.count + 1)"
+                    showingSaveAlert = true
+                }
+            )
+            .frame(maxWidth: .infinity)
+
+            templateActionButton(
+                title: "List",
+                systemName: "list.bullet",
+                action: {
+                    showingTemplatesPage = true
+                },
+                bounceToken: listButtonBounceToken
+            )
+            .frame(maxWidth: .infinity)
         }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func templateActionButton(
+        title: String,
+        systemName: String,
+        isEnabled: Bool = true,
+        action: @escaping () -> Void,
+        bounceToken: Int = 0
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(isEnabled ? .primary : .secondary)
+                .frame(maxWidth: .infinity)
+                .frame(height: 40)
+                .background(.thickMaterial, in: Capsule())
+                .contentShape(Capsule())
+                .opacity(isEnabled ? 1.0 : 0.45)
+                .symbolEffect(.bounce, value: bounceToken)
+        }
+        .buttonStyle(.plain)
+        .disabled(!isEnabled)
+        .accessibilityLabel(title)
     }
 
     private func saveCurrentTemplate(named name: String) {
