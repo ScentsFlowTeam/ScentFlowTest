@@ -164,6 +164,29 @@ final class GradientWheelViewModel: ObservableObject {
         if isPowerOn { scheduleWheelRebuild() }
     }
 
+    func setPod(_ podID: UUID, isIncluded shouldInclude: Bool) {
+        let oldIncluded = included
+
+        if shouldInclude {
+            guard !included.contains(podID), canSelectMore else { return }
+            included.insert(podID)
+            focusedPodID = podID
+            opacities[podID] = opacities[podID] ?? (AppConfig.maxIntensity * 0.5)
+        } else {
+            guard included.contains(podID) else { return }
+            included.remove(podID)
+            opacities[podID] = nil
+        }
+
+        if included != oldIncluded {
+            currentTemplateID = nil
+        }
+
+        ensureFocusedPodIsValid()
+
+        if isPowerOn { scheduleWheelRebuild() }
+    }
+
     func setOpacity(_ value: Double, for podID: UUID) {
         let clamped = max(0.0, min(AppConfig.maxIntensity, value))
         let oldValue = opacities[podID] ?? 0

@@ -2,56 +2,44 @@ import SwiftUI
 
 struct PowerButtonRow: View {
     let isOn: Bool
-    let speed: Double
     let onToggle: () -> Void
-    let onChangeSpeed: (Double) -> Void
 
     let showsTemplateTransport: Bool
     let canGoPrevious: Bool
     let canGoNext: Bool
     let onPrevious: () -> Void
     let onNext: () -> Void
-    let onOpenTemplates: () -> Void
 
     let turnOffTimer: TurnOffTimerController
     let onStartTurnOffTimer: (TimeInterval) -> Void
     let onCancelTurnOffTimer: () -> Void
-    let listButtonBounceToken: Int
 
     init(
         isOn: Bool,
-        speed: Double,
         onToggle: @escaping () -> Void,
-        onChangeSpeed: @escaping (Double) -> Void,
         showsTemplateTransport: Bool = false,
         canGoPrevious: Bool = false,
         canGoNext: Bool = false,
         onPrevious: @escaping () -> Void = {},
         onNext: @escaping () -> Void = {},
-        onOpenTemplates: @escaping () -> Void = {},
         turnOffTimer: TurnOffTimerController,
         onStartTurnOffTimer: @escaping (TimeInterval) -> Void,
-        onCancelTurnOffTimer: @escaping () -> Void,
-        listButtonBounceToken: Int = 0
+        onCancelTurnOffTimer: @escaping () -> Void
     ) {
         self.isOn = isOn
-        self.speed = speed
         self.onToggle = onToggle
-        self.onChangeSpeed = onChangeSpeed
         self.showsTemplateTransport = showsTemplateTransport
         self.canGoPrevious = canGoPrevious
         self.canGoNext = canGoNext
         self.onPrevious = onPrevious
         self.onNext = onNext
-        self.onOpenTemplates = onOpenTemplates
         self.turnOffTimer = turnOffTimer
         self.onStartTurnOffTimer = onStartTurnOffTimer
         self.onCancelTurnOffTimer = onCancelTurnOffTimer
-        self.listButtonBounceToken = listButtonBounceToken
     }
 
     var body: some View {
-        HStack  {
+        HStack {
             TurnOffTimerButton(
                 isDeviceOn: isOn,
                 controller: turnOffTimer,
@@ -61,7 +49,7 @@ struct PowerButtonRow: View {
             .padding(.leading, 16)
 
             Spacer()
-            
+
             if showsTemplateTransport {
                 ControlButton(
                     systemName: "backward.fill",
@@ -84,7 +72,7 @@ struct PowerButtonRow: View {
             }
 
             Spacer()
-            
+
             ControlButton(
                 systemName: "shuffle",
                 isEnabled: true,
@@ -101,7 +89,6 @@ struct PowerButtonRow: View {
         }
         .shadow(color: Color.black.opacity(0.35), radius: 14, x: 0, y: -8)
         .accessibilityElement(children: .contain)
-        
     }
 }
 

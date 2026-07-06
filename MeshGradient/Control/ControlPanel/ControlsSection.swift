@@ -1,8 +1,3 @@
-// ControlsSection.swift  — FIXED call to ScentControllerStepper + ID-centric
-
-//
-//  ControlsSection.swift
-//
 import SwiftUI
 
 struct ControlsSection: View {
@@ -17,36 +12,49 @@ struct ControlsSection: View {
     @State private var showingTemplateExplorePage = false
     @StateObject private var turnOffTimer = TurnOffTimerController()
     @State private var listButtonBounceToken = 0
-    @State private var temporaryPodDisplay: String?
-    @State private var temporaryPodDisplayTask: Task<Void, Never>?
+    @State private var adjustingPodText: String?
+    @State private var adjustingPodTask: Task<Void, Never>?
 
     private enum UI {
         static let sectionSpacing: CGFloat = 12
         static let horizontalBleed: CGFloat = 16
-        static let screenPartRadius = ControlCornerStyle.radius
-        static let screenPartInset: CGFloat = 16
         static let expansionDragThreshold: CGFloat = 28
     }
 
     var body: some View {
         VStack(spacing: UI.sectionSpacing) {
-            screenPart
-                .padding(.horizontal, -UI.horizontalBleed)
-                .zIndex(1)
+            ControlScreenView(
+                state: playerDisplayState,
+                turnOffTimer: turnOffTimer,
+                canSave: !vm.included.isEmpty,
+                listButtonBounceToken: listButtonBounceToken,
+                onExplore: { showingTemplateExplorePage = true },
+                onShare: {},
+                onSave: beginSaveTemplate,
+                onOpenList: { showingTemplatesPage = true }
+            )
+            .padding(.horizontal, -UI.horizontalBleed)
+            .zIndex(1)
 
             PodsControlView(
                 vm: vm,
                 isExpanded: $isExpanded,
-                onPodIntensityChanged: { pod, value in
-                    showTemporaryPodDisplay(for: pod, value: value)
-                },
-                onPodSelected: { pod, value in
-                    showTemporaryPodDisplay(for: pod, value: value)
-                }
+                onPodIntensityChanged: showAdjustingPod,
+                onPodSelected: showAdjustingPod
             )
 
-            powerButtonRow
-                .padding(.horizontal, -UI.horizontalBleed)
+            ControlPowerSection(
+                vm: vm,
+                templatesService: app.templatesService,
+                turnOffTimer: turnOffTimer,
+                onPreviousTemplate: {
+                    app.applyPreviousTemplate(to: vm, on: device)
+                },
+                onNextTemplate: {
+                    app.applyNextTemplate(to: vm, on: device)
+                }
+            )
+            .padding(.horizontal, -UI.horizontalBleed)
         }
         .frame(maxWidth: .infinity, alignment: .top)
         .contentShape(Rectangle())
@@ -79,13 +87,8 @@ struct ControlsSection: View {
         .navigationDestination(isPresented: $showingTemplateExplorePage) {
             TemplateExplorePage()
         }
-        .onChange(of: vm.isPowerOn) { _, isOn in
-            if !isOn {
-                turnOffTimer.clear()
-            }
-        }
         .onDisappear {
-            temporaryPodDisplayTask?.cancel()
+            adjustingPodTask?.cancel()
         }
     }
 
@@ -110,64 +113,6 @@ struct ControlsSection: View {
         }
     }
 
-    private var powerButtonRow: some View {
-        PowerButtonRow(
-            isOn: vm.isPowerOn,
-            speed: vm.fanSpeed,
-            onToggle: {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-                    vm.togglePower()
-                }
-            },
-            onChangeSpeed: { vm.setFanSpeed($0) },
-            showsTemplateTransport: !app.templatesService.templates.isEmpty,
-            canGoPrevious: vm.isUsingTemplate && app.templatesService.canGoPrevious,
-            canGoNext: vm.isUsingTemplate && app.templatesService.canGoNext,
-            onPrevious: {
-                app.applyPreviousTemplate(to: vm, on: device)
-            },
-            onNext: {
-                app.applyNextTemplate(to: vm, on: device)
-            },
-            onOpenTemplates: {
-                showingTemplatesPage = true
-            },
-            turnOffTimer: turnOffTimer,
-            onStartTurnOffTimer: { duration in
-                turnOffTimer.start(duration: duration) {
-                    if vm.isPowerOn {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-                            vm.setPower(false)
-                        }
-                    }
-                }
-            },
-            onCancelTurnOffTimer: {
-                turnOffTimer.clear()
-            },
-            listButtonBounceToken: listButtonBounceToken
-        )
-    }
-
-    private var screenPart: some View {
-        let shape = RoundedRectangle(cornerRadius: UI.screenPartRadius, style: .continuous)
-
-        return VStack(spacing: 10) {
-            RetroPlayerDisplay(state: playerDisplayState)
-
-            templateActionRow
-        }
-        .padding(UI.screenPartInset)
-        .frame(maxWidth: .infinity)
-        .containerShape(shape)
-        .background(.ultraThickMaterial, in: shape)
-        .overlay {
-            shape
-                .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
-        }
-        .shadow(color: Color.black.opacity(0.35), radius: 14, x: 0, y: 8)
-    }
-
     private var currentTemplate: ScentsTemplate? {
         guard vm.isUsingTemplate,
               let id = vm.currentTemplateID
@@ -177,10 +122,6 @@ struct ControlsSection: View {
     }
 
     private var playerDisplayState: RetroPlayerDisplay.DisplayState {
-        if let temporaryPodDisplay {
-            return .podChange(message: temporaryPodDisplay)
-        }
-
         guard vm.isPowerOn else { return .deviceOff }
 
         let title = currentTemplate?.name ?? "Unsaved Template"
@@ -190,88 +131,45 @@ struct ControlsSection: View {
 
         return .playing(
             title: title,
+            bodyText: activePodsIntensityText,
             position: position,
             total: app.templatesService.templates.count
         )
     }
 
-    private func showTemporaryPodDisplay(for pod: ScentPod, value: Double) {
+    private var activePodsIntensityText: String {
+        if let adjustingPodText {
+            return adjustingPodText
+        }
+
+        let activePods = vm.pods.filter { vm.included.contains($0.id) }
+        guard !activePods.isEmpty else { return "No active pods" }
+
+        return activePods
+            .map { pod in intensityText(for: pod, value: vm.opacities[pod.id] ?? 0) }
+            .joined(separator: "  ")
+    }
+
+    private func intensityText(for pod: ScentPod, value: Double) -> String {
         let maxIntensity = max(0.0001, AppConfig.maxIntensity)
         let clamped = min(max(value, 0), maxIntensity)
         let percent = Int((clamped / maxIntensity * 100).rounded())
+        return "\(pod.name): \(percent)%"
+    }
 
-        temporaryPodDisplay = "\(pod.name): \(percent)%"
-        temporaryPodDisplayTask?.cancel()
-        temporaryPodDisplayTask = Task { @MainActor in
+    private func showAdjustingPod(for pod: ScentPod, value: Double) {
+        adjustingPodText = intensityText(for: pod, value: value)
+        adjustingPodTask?.cancel()
+        adjustingPodTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 1_000_000_000)
             guard !Task.isCancelled else { return }
-            temporaryPodDisplay = nil
+            adjustingPodText = nil
         }
     }
 
-    private var templateActionRow: some View {
-        HStack(spacing: 8) {
-            templateActionButton(
-                title: "Explore",
-                systemName: "sparkles",
-                action: {
-                    showingTemplateExplorePage = true
-                }
-            )
-            .frame(maxWidth: .infinity)
-
-            templateActionButton(
-                title: "Share",
-                systemName: "square.and.arrow.up",
-                action: {}
-            )
-            .frame(maxWidth: .infinity)
-
-            templateActionButton(
-                title: "Save",
-                systemName: "square.and.arrow.down",
-                isEnabled: !vm.included.isEmpty,
-                action: {
-                    newTemplateName = "Mix \(app.templatesService.templates.count + 1)"
-                    showingSaveAlert = true
-                }
-            )
-            .frame(maxWidth: .infinity)
-
-            templateActionButton(
-                title: "List",
-                systemName: "list.bullet",
-                action: {
-                    showingTemplatesPage = true
-                },
-                bounceToken: listButtonBounceToken
-            )
-            .frame(maxWidth: .infinity)
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    private func templateActionButton(
-        title: String,
-        systemName: String,
-        isEnabled: Bool = true,
-        action: @escaping () -> Void,
-        bounceToken: Int = 0
-    ) -> some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(isEnabled ? .primary : .secondary)
-                .frame(maxWidth: .infinity)
-                .frame(height: 40)
-                .background(.thickMaterial, in: Capsule())
-                .contentShape(Capsule())
-                .opacity(isEnabled ? 1.0 : 0.45)
-                .symbolEffect(.bounce, value: bounceToken)
-        }
-        .buttonStyle(.plain)
-        .disabled(!isEnabled)
-        .accessibilityLabel(title)
+    private func beginSaveTemplate() {
+        newTemplateName = "Mix \(app.templatesService.templates.count + 1)"
+        showingSaveAlert = true
     }
 
     private func saveCurrentTemplate(named name: String) {
