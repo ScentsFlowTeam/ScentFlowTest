@@ -19,8 +19,6 @@ struct PodsControlView: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            header
-
             if !isExpanded {
                 ScentPodsRow(
                     pods: vm.pods,
@@ -52,16 +50,19 @@ struct PodsControlView: View {
         .animation(.easeInOut(duration: 0.2), value: vm.isPowerOn)
         .onChange(of: vm.isPowerOn) { _, isOn in
             if !isOn && isExpanded {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-                    isExpanded = false
-                }
+                setExpanded(false)
             }
         }
         .onChange(of: vm.included.count) { _, newCount in
             guard isExpanded, newCount <= 1 else { return }
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-                isExpanded = false
-            }
+            setExpanded(false)
+        }
+    }
+
+    private func setExpanded(_ expanded: Bool) {
+        guard isExpanded != expanded else { return }
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
+            isExpanded = expanded
         }
     }
 
@@ -73,36 +74,6 @@ struct PodsControlView: View {
         else { return }
 
         onPodSelected(pod, vm.opacities[podID] ?? 0)
-    }
-
-    private var header: some View {
-        HStack {
-//            Text("Pods")
-//                .font(.subheadline.bold())
-
-            Spacer()
-
-            if vm.pods.count > 1 {
-                Label(
-                    isExpanded ? "Collapse" : "Expand",
-                    systemImage: isExpanded ? "chevron.up" : "chevron.down"
-                )
-                .labelStyle(.iconOnly)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .accessibilityHidden(true)
-            }
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            guard vm.isPowerOn, vm.pods.count > 1 else { return }
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-                isExpanded.toggle()
-            }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Pods")
-        .accessibilityAddTraits(vm.isPowerOn && vm.pods.count > 1 ? .isButton : [])
     }
 
     @ViewBuilder

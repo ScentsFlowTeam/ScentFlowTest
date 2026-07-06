@@ -11,6 +11,7 @@ struct GradientContainerCircle: View {
     var animate: Bool = true
     var isTemplate: Bool = false
     var meshOpacity: Double = 1.0
+    var animatePowerTransition: Bool = true
     
     // Power behavior mirrored from PowerButtonRow:
     var isOn: Bool = false
@@ -47,15 +48,15 @@ struct GradientContainerCircle: View {
                         )
                         .opacity(meshOpacity)
                         // Fade timing for halo (decoupled from the spring)
-                        .animation(.easeInOut(duration: fadingDuration), value: isOn)
+                        .animation(animatePowerTransition ? .easeInOut(duration: fadingDuration) : nil, value: isOn)
                     
                         
                         Circle()
                             .fill(baseShadow)
                             .shadow(color: baseShadow.opacity(isOn ? 0.2 : 1), radius: isOn  ? 10 : 30)
-                            .animation(.easeInOut(duration: fadingDuration), value: isOn)
+                            .animation(animatePowerTransition ? .easeInOut(duration: fadingDuration) : nil, value: isOn)
                             .opacity(!colors.isEmpty && isOn ? 0 : 1)  // When power is on and color is added, remove this shadow.
-                            .animation(.easeInOut(duration: fadingDuration), value: isOn && !colors.isEmpty)
+                            .animation(animatePowerTransition ? .easeInOut(duration: fadingDuration) : nil, value: isOn && !colors.isEmpty)
                             
                     
                     
@@ -67,7 +68,7 @@ struct GradientContainerCircle: View {
                         .background
                     )
                     .opacity(isOn ? 0.95 : 0.9)
-                    .animation(.easeInOut(duration: fadingDuration), value: isOn)
+                    .animation(animatePowerTransition ? .easeInOut(duration: fadingDuration) : nil, value: isOn)
                 // Main mesh content inside the ring
                 MeshColorCircle(colors: displayColors.isEmpty ?  [.white.opacity(0.1),.white.opacity(0),.white.opacity(0.05),.white.opacity(0.05),.white.opacity(0.25)] : displayColors , animate: animate)
                     //.padding(tokens.rimWidth)
@@ -78,14 +79,15 @@ struct GradientContainerCircle: View {
             .aspectRatio(1, contentMode: .fit)
             .scaleEffect(circleScale)
             .opacity(isTemplate || isOn ? 1 : 0.1)
-            .animation(.easeInOut(duration: deviceTransitionDuration), value: isOn)
+            .animation(animatePowerTransition ? .easeInOut(duration: deviceTransitionDuration) : nil, value: isOn)
             
             if !isTemplate {
                 DevicePowerTransitionImage(
                     isOn: isOn,
                     widthScale: deviceImageWidthScale,
                     zoomScale: deviceZoomScale,
-                    transitionDuration: deviceTransitionDuration
+                    transitionDuration: deviceTransitionDuration,
+                    animateTransition: animatePowerTransition
                 )
             }
 //
@@ -122,6 +124,11 @@ struct GradientContainerCircle: View {
     }
     
     private func updateCircleRevealScale(for isOn: Bool) {
+        if !animatePowerTransition {
+            circleRevealScale = isOn ? 1.0 : circleDeviceInsetScale
+            return
+        }
+
         if isOn {
             circleRevealScale = circleDeviceInsetScale
             withAnimation(.easeInOut(duration: deviceTransitionDuration)) {
@@ -160,6 +167,7 @@ private struct DevicePowerTransitionImage: View {
     let widthScale: CGFloat
     let zoomScale: CGFloat
     let transitionDuration: TimeInterval
+    let animateTransition: Bool
     
     var body: some View {
         GeometryReader { geo in
@@ -172,7 +180,7 @@ private struct DevicePowerTransitionImage: View {
                 .scaleEffect(isOn ? zoomScale : 1.0, anchor: .center)
                 .opacity(isOn ? 0 : 0.5)
                 .position(x: geo.size.width / 2, y: geo.size.height / 2)
-                .animation(.easeInOut(duration: transitionDuration), value: isOn)
+                .animation(animateTransition ? .easeInOut(duration: transitionDuration) : nil, value: isOn)
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
         }

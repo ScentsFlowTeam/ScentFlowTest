@@ -193,7 +193,7 @@ final class GradientWheelViewModel: ObservableObject {
     }
 
     // MARK: - Debounced rebuild
-    func scheduleWheelRebuild() {
+    func scheduleWheelRebuild(animated: Bool = true) {
         rebuildTask?.cancel(); clearTask?.cancel()
         let snap = GradientWheelBuilder.Snapshot(
             orderedPodIDs: orderedPodIDs,
@@ -208,7 +208,11 @@ final class GradientWheelViewModel: ObservableObject {
             if Task.isCancelled { return }
             await MainActor.run {
                 guard let self else { return }
-                withAnimation(.easeInOut(duration: 1.0)) {
+                if animated {
+                    withAnimation(.easeInOut(duration: 1.0)) {
+                        self.selectedColorsWeighted = stops
+                    }
+                } else {
                     self.selectedColorsWeighted = stops
                 }
             }
@@ -235,7 +239,7 @@ final class GradientWheelViewModel: ObservableObject {
         
         ensureFocusedPodIsValid()
 
-        setPower(s.isPowerOn)
+        isPowerOn = s.isPowerOn
         setFanSpeed(s.fanSpeed)
 
         if !s.isPowerOn || included.isEmpty {
@@ -245,7 +249,7 @@ final class GradientWheelViewModel: ObservableObject {
             clearTask?.cancel()
         } else {
             wheelOpacity = 1.0
-            scheduleWheelRebuild()
+            scheduleWheelRebuild(animated: false)
         }
     }
 }

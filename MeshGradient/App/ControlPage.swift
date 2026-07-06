@@ -23,6 +23,7 @@ struct ControlPage: View {
     @State private var controlsExpanded = false
     @State private var didInitialLoad = false
     @State private var isHydratingVM = false
+    @State private var allowsCirclePowerTransition = false
 
     enum Segment: Int, Hashable { case controls = 0, templates = 1 }
     @State private var segment: Segment = .controls
@@ -47,6 +48,7 @@ struct ControlPage: View {
 
     private func loadDeviceIntoVM(_ device: Device) {
         isHydratingVM = true
+        allowsCirclePowerTransition = false
 
         vm.updateDevicePods(device.insertedPods)
 
@@ -71,6 +73,7 @@ struct ControlPage: View {
         // Let all @Published updates settle before re-enabling persistence
         DispatchQueue.main.async {
             isHydratingVM = false
+            allowsCirclePowerTransition = true
         }
     }
 
@@ -81,6 +84,7 @@ struct ControlPage: View {
                     colors: vm.selectedColorsWeighted,
                     animate: vm.isPowerOn,
                     meshOpacity: vm.wheelOpacity,
+                    animatePowerTransition: allowsCirclePowerTransition,
                     isOn: vm.isPowerOn,
                     onToggle: { vm.togglePower() }
                 )

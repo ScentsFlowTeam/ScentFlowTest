@@ -25,6 +25,7 @@ struct ControlsSection: View {
         static let horizontalBleed: CGFloat = 16
         static let screenPartRadius = ControlCornerStyle.radius
         static let screenPartInset: CGFloat = 16
+        static let expansionDragThreshold: CGFloat = 28
     }
 
     var body: some View {
@@ -48,6 +49,8 @@ struct ControlsSection: View {
                 .padding(.horizontal, -UI.horizontalBleed)
         }
         .frame(maxWidth: .infinity, alignment: .top)
+        .contentShape(Rectangle())
+        .simultaneousGesture(expansionDragGesture)
         .alert("Save Template", isPresented: $showingSaveAlert) {
             TextField("Template name", text: $newTemplateName)
                 .textInputAutocapitalization(.words)
@@ -83,6 +86,27 @@ struct ControlsSection: View {
         }
         .onDisappear {
             temporaryPodDisplayTask?.cancel()
+        }
+    }
+
+    private var expansionDragGesture: some Gesture {
+        DragGesture(minimumDistance: 18)
+            .onEnded { value in
+                guard vm.isPowerOn, vm.pods.count > 1 else { return }
+
+                let translation = value.translation
+                guard abs(translation.height) > abs(translation.width),
+                      abs(translation.height) >= UI.expansionDragThreshold
+                else { return }
+
+                setExpanded(translation.height < 0)
+            }
+    }
+
+    private func setExpanded(_ expanded: Bool) {
+        guard isExpanded != expanded else { return }
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
+            isExpanded = expanded
         }
     }
 
