@@ -4,185 +4,167 @@ struct ControlsSection: View {
     @EnvironmentObject private var app: AppModel
     @ObservedObject var vm: GradientWheelViewModel
     let device: Device
-    @Binding var isExpanded: Bool
+    @Binding var size: PodsControlSize
 
-    @State private var showingSaveAlert = false
-    @State private var newTemplateName: String = ""
-    @State private var showingTemplatesPage = false
-    @State private var showingTemplateExplorePage = false
-    @StateObject private var turnOffTimer = TurnOffTimerController()
-    @State private var listButtonBounceToken = 0
-    @State private var adjustingPodText: String?
-    @State private var adjustingPodTask: Task<Void, Never>?
+    @StateObject private var panel = ControlPanelViewModel()
+    @StateObject private var templateLength = TemplateLengthController()
 
     private enum UI {
         static let sectionSpacing: CGFloat = 12
         static let horizontalBleed: CGFloat = 16
+        // Minimum vertical drag to step one size; a larger drag jumps two sizes.
         static let expansionDragThreshold: CGFloat = 28
+        static let bigDragThreshold: CGFloat = 120
     }
 
     var body: some View {
         VStack(spacing: UI.sectionSpacing) {
             ControlScreenView(
-                state: playerDisplayState,
-                turnOffTimer: turnOffTimer,
-                canSave: !vm.included.isEmpty,
-                listButtonBounceToken: listButtonBounceToken,
-                onExplore: { showingTemplateExplorePage = true },
-                onShare: {},
-                onSave: beginSaveTemplate,
-                onOpenList: { showingTemplatesPage = true }
+                state: panel.playerDisplayState(
+                    gradientVM: vm,
+                    templatesService: app.templatesService
+                ),
+                templateLength: templateLength
             )
             .padding(.horizontal, -UI.horizontalBleed)
             .zIndex(1)
 
             PodsControlView(
                 vm: vm,
-                isExpanded: $isExpanded,
-                onPodIntensityChanged: showAdjustingPod,
-                onPodSelected: showAdjustingPod
+                templateLength: templateLength,
+                size: $size,
+                canSaveTemplate: vm.isPowerOn && panel.canSaveTemplate(gradientVM: vm),
+                saveActionTitle: panel.saveActionTitle(gradientVM: vm, templatesService: app.templatesService),
+                saveSystemName: panel.saveSystemName(),
+                onSaveTemplate: { panel.handleSave(gradientVM: vm, templatesService: app.templatesService) },
+                onStartTemplateLength: { panel.setTemplateLength($0, gradientVM: vm, templateLength: templateLength) },
+                onClearTemplateLength: { panel.clearTemplateLength(gradientVM: vm, templateLength: templateLength) },
+                onPodIntensityChanged: panel.showAdjustingPod,
+                onPodSelected: panel.showAdjustingPod
             )
 
-            ControlPowerSection(
+            ControlTransportSection(
                 vm: vm,
                 templatesService: app.templatesService,
-                turnOffTimer: turnOffTimer,
+                listButtonBounceToken: panel.listButtonBounceToken,
                 onPreviousTemplate: {
                     app.applyPreviousTemplate(to: vm, on: device)
                 },
                 onNextTemplate: {
                     app.applyNextTemplate(to: vm, on: device)
-                }
+                },
+                onOpenTemplateList: { panel.showingTemplatesPage = true }
             )
             .padding(.horizontal, -UI.horizontalBleed)
         }
         .frame(maxWidth: .infinity, alignment: .top)
         .contentShape(Rectangle())
         .simultaneousGesture(expansionDragGesture)
-        .alert("Save Template", isPresented: $showingSaveAlert) {
-            TextField("Template name", text: $newTemplateName)
+        .confirmationDialog("", isPresented: $panel.showingSaveOptions, titleVisibility: .hidden) {
+            if let sourceTemplate = panel.sourceTemplate(gradientVM: vm, templatesService: app.templatesService) {
+                Button("Update \(sourceTemplate.name)") {
+                    panel.updateTemplate(
+                        sourceTemplate,
+                        gradientVM: vm,
+                        templatesService: app.templatesService,
+                        templateLength: templateLength
+                    )
+                }
+
+                Button("Save as New Template") {
+                    panel.beginSaveTemplate(prefilledName: "\(sourceTemplate.name) Copy")
+                }
+            }
+        }
+        .alert("New Template", isPresented: $panel.showingSaveAlert) {
+            TextField("Template name", text: $panel.newTemplateName)
                 .textInputAutocapitalization(.words)
                 .disableAutocorrection(true)
 
             Button("Save") {
-                let name = newTemplateName.trimmingCharacters(in: .whitespacesAndNewlines)
+                let name = panel.newTemplateName.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !name.isEmpty else { return }
-                saveCurrentTemplate(named: name)
-                newTemplateName = ""
+                panel.saveCurrentTemplate(
+                    named: name,
+                    gradientVM: vm,
+                    templatesService: app.templatesService,
+                    templateLength: templateLength
+                )
             }
 
             Button("Cancel", role: .cancel) {
-                newTemplateName = ""
+                panel.newTemplateName = ""
             }
         } message: {
             Text("Enter a name for this scent mix.")
         }
-        .navigationDestination(isPresented: $showingTemplatesPage) {
+        .navigationDestination(isPresented: $panel.showingTemplatesPage) {
             TemplatesPage(
                 templatesService: app.templatesService,
                 vm: vm,
                 device: device
             )
         }
-        .navigationDestination(isPresented: $showingTemplateExplorePage) {
-            TemplateExplorePage()
+        .onAppear {
+            panel.onAppear(
+                gradientVM: vm,
+                templatesService: app.templatesService,
+                templateLength: templateLength
+            )
+            // When the length elapses, advance to the next template in the list.
+            templateLength.onFinished = {
+                app.applyNextTemplate(to: vm, on: device)
+            }
         }
-        .onDisappear {
-            adjustingPodTask?.cancel()
+        .onChange(of: vm.currentTemplateID) { _, id in
+            panel.templateIDChanged(
+                to: id,
+                gradientVM: vm,
+                templatesService: app.templatesService,
+                templateLength: templateLength
+            )
+        }
+        .onChange(of: vm.isPowerOn) { _, isOn in
+            panel.powerChanged(isOn: isOn, templateLength: templateLength)
+        }
+        .onChange(of: vm.templateLengthDuration) { _, _ in
+            panel.syncTemplateLength(gradientVM: vm, templateLength: templateLength)
+        }
+        .onChange(of: vm.templateLengthStartDate) { _, _ in
+            panel.syncTemplateLength(gradientVM: vm, templateLength: templateLength)
         }
     }
 
     private var expansionDragGesture: some Gesture {
         DragGesture(minimumDistance: 18)
             .onEnded { value in
-                guard vm.isPowerOn, vm.pods.count > 1 else { return }
+                guard vm.isPowerOn else { return }
 
                 let translation = value.translation
                 guard abs(translation.height) > abs(translation.width),
                       abs(translation.height) >= UI.expansionDragThreshold
                 else { return }
 
-                setExpanded(translation.height < 0)
+                let swipingUp = translation.height < 0
+                let bigSwipe = abs(translation.height) >= UI.bigDragThreshold
+
+                var target: PodsControlSize = swipingUp
+                    ? (bigSwipe ? .large : size.larger)
+                    : (bigSwipe ? .small : size.smaller)
+
+                // The per-pod sliders (large) need more than one pod to be useful.
+                if target == .large, vm.pods.count <= 1 {
+                    target = .medium
+                }
+
+                setSize(target)
             }
     }
 
-    private func setExpanded(_ expanded: Bool) {
-        guard isExpanded != expanded else { return }
+    private func setSize(_ newSize: PodsControlSize) {
+        guard size != newSize else { return }
         withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-            isExpanded = expanded
-        }
-    }
-
-    private var currentTemplate: ScentsTemplate? {
-        guard vm.isUsingTemplate,
-              let id = vm.currentTemplateID
-        else { return nil }
-
-        return app.templatesService.templates.first(where: { $0.id == id })
-    }
-
-    private var playerDisplayState: RetroPlayerDisplay.DisplayState {
-        guard vm.isPowerOn else { return .deviceOff }
-
-        let title = currentTemplate?.name ?? "Unsaved Template"
-        let position = currentTemplate.flatMap { template in
-            app.templatesService.templates.firstIndex(where: { $0.id == template.id }).map { $0 + 1 }
-        }
-
-        return .playing(
-            title: title,
-            bodyText: activePodsIntensityText,
-            position: position,
-            total: app.templatesService.templates.count
-        )
-    }
-
-    private var activePodsIntensityText: String {
-        if let adjustingPodText {
-            return adjustingPodText
-        }
-
-        let activePods = vm.pods.filter { vm.included.contains($0.id) }
-        guard !activePods.isEmpty else { return "No active pods" }
-
-        return activePods
-            .map { pod in intensityText(for: pod, value: vm.opacities[pod.id] ?? 0) }
-            .joined(separator: "  ")
-    }
-
-    private func intensityText(for pod: ScentPod, value: Double) -> String {
-        let maxIntensity = max(0.0001, AppConfig.maxIntensity)
-        let clamped = min(max(value, 0), maxIntensity)
-        let percent = Int((clamped / maxIntensity * 100).rounded())
-        return "\(pod.name): \(percent)%"
-    }
-
-    private func showAdjustingPod(for pod: ScentPod, value: Double) {
-        adjustingPodText = intensityText(for: pod, value: value)
-        adjustingPodTask?.cancel()
-        adjustingPodTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 1_000_000_000)
-            guard !Task.isCancelled else { return }
-            adjustingPodText = nil
-        }
-    }
-
-    private func beginSaveTemplate() {
-        newTemplateName = "Mix \(app.templatesService.templates.count + 1)"
-        showingSaveAlert = true
-    }
-
-    private func saveCurrentTemplate(named name: String) {
-        let orderedIncluded = vm.pods.filter { vm.included.contains($0.id) }.prefix(6)
-        guard !orderedIncluded.isEmpty else { return }
-
-        let new = ScentsTemplate(name: name, scentPodNames: orderedIncluded.map(\.name))
-        app.templatesService.add(new)
-        app.templatesService.setActiveTemplateID(new.id)
-        vm.setCurrentTemplateID(new.id)
-
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.45)) {
-            listButtonBounceToken += 1
+            size = newSize
         }
     }
 }

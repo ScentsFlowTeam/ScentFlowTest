@@ -1,8 +1,8 @@
 import SwiftUI
 
-struct TurnOffTimerButton: View {
+struct TemplateLengthButton: View {
     let isDeviceOn: Bool
-    @ObservedObject var controller: TurnOffTimerController
+    @ObservedObject var controller: TemplateLengthController
     let onStart: (TimeInterval) -> Void
     let onCancel: () -> Void
 
@@ -15,33 +15,47 @@ struct TurnOffTimerButton: View {
             guard isDeviceOn || controller.isActive else { return }
             showingSheet = true
         } label: {
-            ZStack {
-                Circle()
-                    .fill(.thickMaterial)
-
-                if controller.isActive {
-                    Circle()
-                        .stroke(Color.white.opacity(0.12), lineWidth: 2)
-
-                    Circle()
-                        .trim(from: 0, to: remainingRingFraction)
-                        .stroke(
-                            Color.white.opacity(0.6),
-                            style: StrokeStyle(lineWidth: 2, lineCap: .round)
-                        )
-                        .rotationEffect(.degrees(-90))
-
-                    Image(systemName: "timer")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(.primary)
-                } else {
-                    Image(systemName: "timer")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(isDeviceOn ? .primary : .secondary)
+            Image(systemName: "timer")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(timerForeground)
+                .frame(width: 64, height: 44)
+                .background(timerBackground, in: Capsule())
+                .overlay {
+                    if controller.isActive {
+                        Capsule().strokeBorder(Color.accentColor, lineWidth: 1.5)
+                    }
                 }
-            }
-            .frame(width: 44, height: 44)
-            .opacity((isDeviceOn || controller.isActive) ? 1.0 : 0.45)
+                .contentShape(Capsule())
+                .opacity((isDeviceOn || controller.isActive) ? 1.0 : 0.45)
+
+//            Progress ring moved to RetroPlayerDisplay timeline.
+//            ZStack {
+//                Circle()
+//                    .fill(.thickMaterial)
+//
+//                if controller.isActive {
+//                    Circle()
+//                        .stroke(Color.white.opacity(0.12), lineWidth: 2)
+//
+//                    Circle()
+//                        .trim(from: 0, to: remainingRingFraction)
+//                        .stroke(
+//                            Color.white.opacity(0.6),
+//                            style: StrokeStyle(lineWidth: 2, lineCap: .round)
+//                        )
+//                        .rotationEffect(.degrees(-90))
+//
+//                    Image(systemName: "timer")
+//                        .font(.system(size: 16, weight: .semibold))
+//                        .foregroundStyle(.primary)
+//                } else {
+//                    Image(systemName: "timer")
+//                        .font(.system(size: 16, weight: .semibold))
+//                        .foregroundStyle(isDeviceOn ? .primary : .secondary)
+//                }
+//            }
+//            .frame(width: 44, height: 44)
+//            .opacity((isDeviceOn || controller.isActive) ? 1.0 : 0.45)
         }
         .buttonStyle(.plain)
         .disabled(!isDeviceOn && !controller.isActive)
@@ -52,25 +66,25 @@ struct TurnOffTimerButton: View {
         }
     }
 
-    private var remainingRingFraction: Double {
-        guard controller.totalDuration > 0 else { return 0 }
-        return max(0, min(1, controller.remainingDuration / controller.totalDuration))
-    }
+//    private var remainingRingFraction: Double {
+//        guard controller.totalDuration > 0 else { return 0 }
+//        return max(0, min(1, controller.remainingDuration / controller.totalDuration))
+//    }
 
     private var timerSheet: some View {
         NavigationStack {
             VStack(spacing: 20) {
                 if controller.isActive {
                     VStack(spacing: 10) {
-                        Text("Scheduled Turn Off")
+                        Text("Template Length")
                             .font(.headline)
 
-                        Text(controller.remainingText)
+                        Text(controller.playbackText)
                             .font(.system(size: 34, weight: .semibold, design: .rounded))
                             .monospacedDigit()
                             .foregroundStyle(.primary)
 
-                        Text("The device will turn off automatically when the countdown ends.")
+                        Text("The screen timeline uses this length for template playback.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
@@ -90,7 +104,7 @@ struct TurnOffTimerButton: View {
                                 .fill(Color.white.opacity(0.08))
                         )
 
-                        Button("Cancel Timer") {
+                        Button("Clear Length") {
                             onCancel()
                             showingSheet = false
                         }
@@ -105,7 +119,7 @@ struct TurnOffTimerButton: View {
                     .buttonStyle(.plain)
                 } else {
                     VStack(spacing: 14) {
-                        Text("Scheduled Turn Off")
+                        Text("Template Length")
                             .font(.headline)
 
                         HStack(spacing: 0) {
@@ -141,7 +155,7 @@ struct TurnOffTimerButton: View {
                                 .fill(Color.white.opacity(0.08))
                         )
 
-                        Button("Start") {
+                        Button("Set") {
                             onStart(selectedDuration)
                             showingSheet = false
                         }
@@ -165,5 +179,17 @@ struct TurnOffTimerButton: View {
 
     private var selectedDuration: TimeInterval {
         TimeInterval((selectedHours * 3600) + (selectedMinutes * 60))
+    }
+
+    // Accent-tinted while a length is running, neutral material otherwise.
+    private var timerBackground: AnyShapeStyle {
+        controller.isActive
+            ? AnyShapeStyle(Color.accentColor.opacity(0.25))
+            : AnyShapeStyle(.thickMaterial)
+    }
+
+    private var timerForeground: Color {
+        if controller.isActive { return .accentColor }
+        return (isDeviceOn || controller.isActive) ? .primary : .secondary
     }
 }

@@ -1,18 +1,16 @@
 import SwiftUI
 
-struct PowerButtonRow: View {
+struct TransportButtonRow: View {
     let isOn: Bool
     let onToggle: () -> Void
 
     let showsTemplateTransport: Bool
     let canGoPrevious: Bool
     let canGoNext: Bool
+    let listButtonBounceToken: Int
     let onPrevious: () -> Void
     let onNext: () -> Void
-
-    let turnOffTimer: TurnOffTimerController
-    let onStartTurnOffTimer: (TimeInterval) -> Void
-    let onCancelTurnOffTimer: () -> Void
+    let onOpenTemplateList: () -> Void
 
     init(
         isOn: Bool,
@@ -20,39 +18,37 @@ struct PowerButtonRow: View {
         showsTemplateTransport: Bool = false,
         canGoPrevious: Bool = false,
         canGoNext: Bool = false,
+        listButtonBounceToken: Int = 0,
         onPrevious: @escaping () -> Void = {},
         onNext: @escaping () -> Void = {},
-        turnOffTimer: TurnOffTimerController,
-        onStartTurnOffTimer: @escaping (TimeInterval) -> Void,
-        onCancelTurnOffTimer: @escaping () -> Void
+        onOpenTemplateList: @escaping () -> Void = {}
     ) {
         self.isOn = isOn
         self.onToggle = onToggle
         self.showsTemplateTransport = showsTemplateTransport
         self.canGoPrevious = canGoPrevious
         self.canGoNext = canGoNext
+        self.listButtonBounceToken = listButtonBounceToken
         self.onPrevious = onPrevious
         self.onNext = onNext
-        self.turnOffTimer = turnOffTimer
-        self.onStartTurnOffTimer = onStartTurnOffTimer
-        self.onCancelTurnOffTimer = onCancelTurnOffTimer
+        self.onOpenTemplateList = onOpenTemplateList
     }
 
     var body: some View {
-        HStack {
-            TurnOffTimerButton(
-                isDeviceOn: isOn,
-                controller: turnOffTimer,
-                onStart: onStartTurnOffTimer,
-                onCancel: onCancelTurnOffTimer
+        HStack(spacing: 8) {
+            ControlButton(
+                systemName: "shuffle",
+                accessibilityLabel: "Random template",
+                isEnabled: true,
+                action: {}
             )
-            .padding(.leading, 16)
 
-            Spacer()
+            Spacer(minLength: 4)
 
             if showsTemplateTransport {
                 ControlButton(
                     systemName: "backward.fill",
+                    accessibilityLabel: "Previous template",
                     isEnabled: canGoPrevious,
                     action: onPrevious
                 )
@@ -66,20 +62,23 @@ struct PowerButtonRow: View {
             if showsTemplateTransport {
                 ControlButton(
                     systemName: "forward.fill",
+                    accessibilityLabel: "Next template",
                     isEnabled: canGoNext,
                     action: onNext
                 )
             }
 
-            Spacer()
+            Spacer(minLength: 4)
 
             ControlButton(
-                systemName: "shuffle",
+                systemName: "list.bullet",
+                accessibilityLabel: "Template list",
                 isEnabled: true,
-                action: {}
+                action: onOpenTemplateList,
+                bounceToken: listButtonBounceToken
             )
-            .padding(.trailing, 16)
         }
+        .padding(.horizontal, 12)
         .frame(maxWidth: .infinity, alignment: .center)
         .frame(height: 72)
         .background(.ultraThickMaterial, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
@@ -94,6 +93,7 @@ struct PowerButtonRow: View {
 
 private struct ControlButton: View {
     let systemName: String
+    let accessibilityLabel: String
     let isEnabled: Bool
     let action: () -> Void
     let bounceToken: Int
@@ -103,11 +103,13 @@ private struct ControlButton: View {
 
     init(
         systemName: String,
+        accessibilityLabel: String,
         isEnabled: Bool,
         action: @escaping () -> Void,
         bounceToken: Int = 0
     ) {
         self.systemName = systemName
+        self.accessibilityLabel = accessibilityLabel
         self.isEnabled = isEnabled
         self.action = action
         self.bounceToken = bounceToken
@@ -126,6 +128,7 @@ private struct ControlButton: View {
         }
         .buttonStyle(.plain)
         .disabled(!isEnabled)
+        .accessibilityLabel(accessibilityLabel)
     }
 }
 

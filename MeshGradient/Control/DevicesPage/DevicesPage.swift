@@ -161,11 +161,3 @@ private struct DevicesContentView: View {
         .adaptiveGlassBackground(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 }
-
-#Preview {
-    NavigationStack {
-        DevicesPage()
-    }
-    .environmentObject(AppModel())
-    .preferredColorScheme(.dark)
-}

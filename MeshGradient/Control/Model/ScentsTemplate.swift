@@ -12,11 +12,18 @@ public struct ScentsTemplate: Identifiable, Codable, Hashable {
     public let id: UUID
     public var name: String
     public var scentPodNames: [String]   // ordered
+    public var duration: TimeInterval?
 
-    public init(id: UUID = .init(), name: String, scentPodNames: [String]) {
+    public init(
+        id: UUID = .init(),
+        name: String,
+        scentPodNames: [String],
+        duration: TimeInterval? = nil
+    ) {
         self.id = id
         self.name = name
         self.scentPodNames = scentPodNames
+        self.duration = duration
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -24,6 +31,7 @@ public struct ScentsTemplate: Identifiable, Codable, Hashable {
         case name
         case scentPodNames
         case scentPodIDs
+        case duration
     }
 
     public init(from decoder: Decoder) throws {
@@ -32,6 +40,7 @@ public struct ScentsTemplate: Identifiable, Codable, Hashable {
         id = try container.decode(UUID.self, forKey: .id)
         name = try container.decode(String.self, forKey: .name)
         scentPodNames = try container.decodeIfPresent([String].self, forKey: .scentPodNames) ?? []
+        duration = try container.decodeIfPresent(TimeInterval.self, forKey: .duration)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -40,6 +49,7 @@ public struct ScentsTemplate: Identifiable, Codable, Hashable {
         try container.encode(id, forKey: .id)
         try container.encode(name, forKey: .name)
         try container.encode(scentPodNames, forKey: .scentPodNames)
+        try container.encodeIfPresent(duration, forKey: .duration)
     }
 }
 

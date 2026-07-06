@@ -12,11 +12,21 @@ struct ControlPanel: View {
     @ObservedObject var devicesService: DevicesService
 
     @Binding var segment: ControlPage.Segment
-    @Binding var controlsExpanded: Bool
+    @Binding var controlsSize: PodsControlSize
 
     let collapsedHeight: CGFloat
+    let smallHeight: CGFloat
 
-    private var shouldAutoSize: Bool { segment == .controls && controlsExpanded }
+    /// Resolved panel height: `nil` (auto-size) only for the large controls size.
+    private var resolvedHeight: CGFloat? {
+        guard segment == .controls else { return collapsedHeight }
+        switch controlsSize {
+        case .small: return smallHeight
+        case .medium: return collapsedHeight
+        case .large: return nil
+        }
+    }
+
     private var currentDevice: Device? {
         devicesService.selected ?? devicesService.devices.first
     }
@@ -40,7 +50,7 @@ struct ControlPanel: View {
                         ControlsSection(
                             vm: vm,
                             device: device,
-                            isExpanded: $controlsExpanded
+                            size: $controlsSize
                         )
                     } else {
                         VStack(spacing: 12) {
@@ -75,7 +85,8 @@ struct ControlPanel: View {
         .padding(.horizontal, 12)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(.gray.opacity(0.15), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
-        .frame(height: shouldAutoSize ? nil : collapsedHeight, alignment: .bottom)
-        .animation(.bouncy, value: shouldAutoSize)
+        .frame(height: resolvedHeight, alignment: .bottom)
+
+        .animation(.bouncy, value: controlsSize)
     }
 }

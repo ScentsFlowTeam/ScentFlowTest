@@ -13,6 +13,7 @@ struct ControlPage: View {
         static let collapsedScale: CGFloat = 1.00
         static let cardHPad: CGFloat = 16
         static let cardBottomPad: CGFloat = 16
+        static let smallCardHeight: CGFloat = 280
         static let collapsedCardHeight: CGFloat = 380
     }
 
@@ -20,7 +21,7 @@ struct ControlPage: View {
 
     @StateObject private var vm = GradientWheelViewModel()
 
-    @State private var controlsExpanded = false
+    @State private var controlsSize: PodsControlSize = .small
     @State private var didInitialLoad = false
     @State private var isHydratingVM = false
     @State private var allowsCirclePowerTransition = false
@@ -29,7 +30,7 @@ struct ControlPage: View {
     @State private var segment: Segment = .controls
 
     private var wheelScale: CGFloat {
-        controlsExpanded ? UI.expandedScale : UI.collapsedScale
+        controlsSize == .large ? UI.expandedScale : UI.collapsedScale
     }
 
     private var selectedDevice: Device? {
@@ -74,6 +75,9 @@ struct ControlPage: View {
         DispatchQueue.main.async {
             isHydratingVM = false
             allowsCirclePowerTransition = true
+            // Persist any load-time normalization (e.g. an anchored timer start
+            // date) so timer progress survives future navigation.
+            persist(vm.exportSettings())
         }
     }
 
@@ -106,8 +110,9 @@ struct ControlPage: View {
                     templatesService: app.templatesService,
                     devicesService: app.devicesService,
                     segment: $segment,
-                    controlsExpanded: $controlsExpanded,
-                    collapsedHeight: UI.collapsedCardHeight
+                    controlsSize: $controlsSize,
+                    collapsedHeight: UI.collapsedCardHeight,
+                    smallHeight: UI.smallCardHeight
                 )
 //                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .containerShape(.rect(cornerRadius: ControlCornerStyle.radius, style: .continuous))

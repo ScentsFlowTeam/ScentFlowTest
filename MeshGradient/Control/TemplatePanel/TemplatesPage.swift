@@ -190,6 +190,11 @@ private struct TemplateListRow: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
+
+                Text(templateLengthText)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
             }
 
             Spacer(minLength: 0)
@@ -211,6 +216,15 @@ private struct TemplateListRow: View {
             return "No matching inserted pods"
         }
         return names.joined(separator: " · ")
+    }
+
+    private var templateLengthText: String {
+        guard let duration = template.duration, duration > 0 else { return "Length: ∞" }
+
+        let totalSeconds = Int(duration.rounded(.down))
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        return String(format: "Length: %02d:%02d", minutes, seconds)
     }
 }
 

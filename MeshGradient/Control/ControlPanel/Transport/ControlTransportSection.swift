@@ -1,46 +1,31 @@
 import SwiftUI
 
-struct ControlPowerSection: View {
+struct ControlTransportSection: View {
     @ObservedObject var vm: GradientWheelViewModel
     @ObservedObject var templatesService: TemplatesService
 
-    let turnOffTimer: TurnOffTimerController
+    let listButtonBounceToken: Int
     let onPreviousTemplate: () -> Void
     let onNextTemplate: () -> Void
+    let onOpenTemplateList: () -> Void
 
     var body: some View {
-        PowerButtonRow(
+        TransportButtonRow(
             isOn: vm.isPowerOn,
             onToggle: togglePower,
             showsTemplateTransport: !templatesService.templates.isEmpty,
             canGoPrevious: vm.isUsingTemplate && templatesService.canGoPrevious,
             canGoNext: vm.isUsingTemplate && templatesService.canGoNext,
+            listButtonBounceToken: listButtonBounceToken,
             onPrevious: onPreviousTemplate,
             onNext: onNextTemplate,
-            turnOffTimer: turnOffTimer,
-            onStartTurnOffTimer: startTurnOffTimer,
-            onCancelTurnOffTimer: turnOffTimer.clear
+            onOpenTemplateList: onOpenTemplateList
         )
-        .onChange(of: vm.isPowerOn) { _, isOn in
-            if !isOn {
-                turnOffTimer.clear()
-            }
-        }
     }
 
     private func togglePower() {
         withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
             vm.togglePower()
-        }
-    }
-
-    private func startTurnOffTimer(duration: TimeInterval) {
-        turnOffTimer.start(duration: duration) {
-            if vm.isPowerOn {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-                    vm.setPower(false)
-                }
-            }
         }
     }
 }

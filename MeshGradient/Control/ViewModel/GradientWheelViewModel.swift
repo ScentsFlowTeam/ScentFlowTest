@@ -30,6 +30,17 @@ final class GradientWheelViewModel: ObservableObject {
     // MARK: - For template player tracking
     @Published private(set) var currentTemplateID: UUID?
 
+    // The template this mix was derived from. Unlike `currentTemplateID`, this
+    // survives pod modifications so the "modified" template title/state can be
+    // restored after navigating away and back.
+    @Published private(set) var sourceTemplateID: UUID?
+
+    // Persisted template-length for the current session (nil = ∞). Kept here so
+    // it survives navigation via the device settings blob. `startDate` lets the
+    // countdown resume at the correct elapsed position, like a music player.
+    @Published private(set) var templateLengthDuration: TimeInterval?
+    @Published private(set) var templateLengthStartDate: Date?
+
     var isUsingTemplate: Bool {
         currentTemplateID != nil
     }
@@ -98,6 +109,13 @@ final class GradientWheelViewModel: ObservableObject {
 
     func setCurrentTemplateID(_ id: UUID?) {
         currentTemplateID = id
+        sourceTemplateID = id
+    }
+
+    func setTemplateLengthDuration(_ duration: TimeInterval?, startDate: Date? = nil) {
+        let normalized = (duration ?? 0) > 0 ? duration : nil
+        templateLengthDuration = normalized
+        templateLengthStartDate = normalized == nil ? nil : (startDate ?? Date())
     }
     
     func applyTemplate(_ template: ScentsTemplate?, on device: Device) {
@@ -110,6 +128,9 @@ final class GradientWheelViewModel: ObservableObject {
             opacities = [:]
             focusedPodID = nil
             currentTemplateID = nil
+            sourceTemplateID = nil
+            templateLengthDuration = nil
+            templateLengthStartDate = nil
 
             fanSpeed = 0.5
             isPowerOn = false
@@ -132,6 +153,10 @@ final class GradientWheelViewModel: ObservableObject {
 
         focusedPodID = ordered.first
         currentTemplateID = template.id
+        sourceTemplateID = template.id
+        let templateDuration = (template.duration ?? 0) > 0 ? template.duration : nil
+        templateLengthDuration = templateDuration
+        templateLengthStartDate = templateDuration == nil ? nil : Date()
         ensureFocusedPodIsValid()
 
         if isPowerOn { scheduleWheelRebuild() }
@@ -258,7 +283,16 @@ final class GradientWheelViewModel: ObservableObject {
         included = s.wheel.included
         opacities = s.wheel.opacities
         focusedPodID = s.wheel.focusedPodID
-        currentTemplateID = nil
+        currentTemplateID = s.currentTemplateID
+        sourceTemplateID = s.sourceTemplateID
+        templateLengthDuration = s.templateLengthDuration
+        // Legacy/missing start date: anchor at load so the countdown has a stable
+        // reference. ControlPage persists this back after hydration so it sticks.
+        if s.templateLengthDuration != nil, s.templateLengthStartDate == nil {
+            templateLengthStartDate = Date()
+        } else {
+            templateLengthStartDate = s.templateLengthStartDate
+        }
         
         ensureFocusedPodIsValid()
 
@@ -283,6 +317,12 @@ extension GradientWheelViewModel {
         var isPowerOn: Bool
         var fanSpeed: Double
         var wheel: WheelSnapshot
+        // Template lineage persisted per-device so it survives navigation
+        // (ControlPage/vm are recreated each time the page is entered).
+        var currentTemplateID: UUID? = nil
+        var sourceTemplateID: UUID? = nil
+        var templateLengthDuration: TimeInterval? = nil
+        var templateLengthStartDate: Date? = nil
     }
 }
 
@@ -291,7 +331,11 @@ extension GradientWheelViewModel {
     func exportSettings() -> WheelSettings {
         WheelSettings(isPowerOn: isPowerOn,
                       fanSpeed: fanSpeed,
-                      wheel: snapshot())
+                      wheel: snapshot(),
+                      currentTemplateID: currentTemplateID,
+                      sourceTemplateID: sourceTemplateID,
+                      templateLengthDuration: templateLengthDuration,
+                      templateLengthStartDate: templateLengthStartDate)
     }
 
 }
@@ -306,8 +350,12 @@ extension GradientWheelViewModel {
         let p3 = $included.dropFirst().map { _ in () }.eraseToAnyPublisher()
         let p4 = $opacities.dropFirst().map { _ in () }.eraseToAnyPublisher()
         let p5 = $focusedPodID.dropFirst().map { _ in () }.eraseToAnyPublisher()
+        let p6 = $currentTemplateID.dropFirst().map { _ in () }.eraseToAnyPublisher()
+        let p7 = $sourceTemplateID.dropFirst().map { _ in () }.eraseToAnyPublisher()
+        let p8 = $templateLengthDuration.dropFirst().map { _ in () }.eraseToAnyPublisher()
+        let p9 = $templateLengthStartDate.dropFirst().map { _ in () }.eraseToAnyPublisher()
 
-        return Publishers.MergeMany(p1, p2, p3, p4, p5)
+        return Publishers.MergeMany(p1, p2, p3, p4, p5, p6, p7, p8, p9)
             //.debounce(for: .milliseconds(150), scheduler: RunLoop.main)
             .map { [unowned self] in self.exportSettings() }
             .removeDuplicates() // WheelSettings: Equatable

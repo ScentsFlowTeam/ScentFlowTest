@@ -2,15 +2,24 @@ import SwiftUI
 
 struct RetroPlayerDisplay: View {
     enum DisplayState: Equatable {
-        case deviceOff
-        case playing(title: String, bodyText: String, position: Int?, total: Int)
+        case deviceOff(title: String)
+        case playing(title: String, modeText: String?, bodyText: String, position: Int?, total: Int)
 
         var headerTitle: String {
             switch self {
-            case .deviceOff:
-                return "Device Off"
-            case .playing(let title, _, _, _):
+            case .deviceOff(let title):
                 return title
+            case .playing(let title, _, _, _, _):
+                return title
+            }
+        }
+
+        var modeText: String? {
+            switch self {
+            case .deviceOff:
+                return nil
+            case .playing(_, let modeText, _, _, _):
+                return modeText
             }
         }
 
@@ -18,7 +27,7 @@ struct RetroPlayerDisplay: View {
             switch self {
             case .deviceOff:
                 return "Device Off"
-            case .playing(_, let bodyText, _, _):
+            case .playing(_, _, let bodyText, _, _):
                 return bodyText
             }
         }
@@ -27,7 +36,7 @@ struct RetroPlayerDisplay: View {
             switch self {
             case .deviceOff:
                 return nil
-            case .playing(_, _, let position, let total):
+            case .playing(_, _, _, let position, let total):
                 guard let position, total > 0 else { return nil }
                 return "\(position)/\(total)"
             }
@@ -35,7 +44,7 @@ struct RetroPlayerDisplay: View {
     }
 
     let state: DisplayState
-    @ObservedObject var turnOffTimer: TurnOffTimerController
+    @ObservedObject var templateLength: TemplateLengthController
 
     private enum UI {
         static let separatorHeight: CGFloat = 1
@@ -74,6 +83,14 @@ struct RetroPlayerDisplay: View {
 
     private var header: some View {
         ZStack(alignment: .trailing) {
+            if let modeText = state.modeText {
+                Text(modeText)
+                    .font(.system(.caption2, design: .monospaced).weight(.semibold))
+                    .foregroundStyle(headerColor.opacity(0.85))
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
             Text(state.headerTitle)
                 .font(.system(.caption, design: .monospaced).weight(.semibold))
                 .foregroundStyle(headerColor)
@@ -81,7 +98,7 @@ struct RetroPlayerDisplay: View {
                 .minimumScaleFactor(0.75)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 44)
+                .padding(.horizontal, 58)
 
             if let counterText = state.counterText {
                 Text(counterText)
@@ -104,7 +121,7 @@ struct RetroPlayerDisplay: View {
             ZStack(alignment: .leading) {
                 separator
 
-                if turnOffTimer.isActive {
+                if templateLength.totalDuration > 0 {
                     Circle()
                         .fill(primaryDisplayColor)
                         .frame(width: UI.timerDotSize, height: UI.timerDotSize)
@@ -132,19 +149,17 @@ struct RetroPlayerDisplay: View {
         HStack(spacing: 0) {
             Spacer(minLength: 0)
 
-            if turnOffTimer.isActive {
-                Text(turnOffTimer.remainingText)
-                    .font(.system(.footnote, design: .monospaced).weight(.semibold))
-                    .foregroundStyle(headerColor.opacity(0.95))
-                    .lineLimit(1)
-                    .monospacedDigit()
-            }
+            Text(templateLength.playbackText)
+                .font(.system(.footnote, design: .monospaced).weight(.semibold))
+                .foregroundStyle(headerColor.opacity(0.95))
+                .lineLimit(1)
+                .monospacedDigit()
         }
     }
 
     private func timerDotOffset(width: CGFloat) -> CGFloat {
         let travel = max(0, width - UI.timerDotSize)
-        return travel * min(1, max(0, turnOffTimer.progress))
+        return travel * min(1, max(0, templateLength.progress))
     }
 
     private var headerColor: Color {
@@ -169,7 +184,7 @@ struct RetroPlayerDisplay: View {
         switch state {
         case .deviceOff:
             return 1.0
-        case .playing(_, let bodyText, _, _) where bodyText == "No active pods":
+        case .playing(_, _, let bodyText, _, _) where bodyText == "No active pods":
             return 0.72
         case .playing:
             return 1.0

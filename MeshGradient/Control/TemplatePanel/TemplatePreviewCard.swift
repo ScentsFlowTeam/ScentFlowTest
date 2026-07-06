@@ -24,12 +24,19 @@ struct TemplatePreviewCard: View {
                     .frame(width: 80, height: 80)
             }
 
-            Text(template.name)
-                .font(.footnote)
-                .lineLimit(1)
-                .frame(width: 90)
-                .multilineTextAlignment(.center)
-                .opacity(0.9)
+            VStack(spacing: 2) {
+                Text(template.name)
+                    .font(.footnote)
+                    .lineLimit(1)
+
+                Text(templateLengthText)
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .frame(width: 90)
+            .multilineTextAlignment(.center)
+            .opacity(0.9)
         }
         .padding(10)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -37,6 +44,15 @@ struct TemplatePreviewCard: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .strokeBorder(.white.opacity(0.10), lineWidth: 1)
         )
+    }
+
+    private var templateLengthText: String {
+        guard let duration = template.duration, duration > 0 else { return "∞" }
+
+        let totalSeconds = Int(duration.rounded(.down))
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        return String(format: "%02d:%02d", minutes, seconds)
     }
 
     /// Build a simple static palette for preview purposes.
