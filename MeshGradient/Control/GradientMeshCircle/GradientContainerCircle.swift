@@ -77,7 +77,7 @@ struct GradientContainerCircle: View {
             }
             .aspectRatio(1, contentMode: .fit)
             .scaleEffect(circleScale)
-            .opacity(isTemplate || isOn ? 1 : 0)
+            .opacity(isTemplate || isOn ? 1 : 0.1)
             .animation(.easeInOut(duration: deviceTransitionDuration), value: isOn)
             
             if !isTemplate {

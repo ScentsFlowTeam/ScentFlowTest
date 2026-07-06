@@ -72,6 +72,16 @@ final class TemplatesService: ObservableObject {
         persistTemplates()
     }
 
+    /// Imports a downloaded template into My Templates, replacing the catalog copy if it already exists.
+    func importDownloaded(_ template: ScentsTemplate) {
+        if let index = templates.firstIndex(where: { $0.id == template.id }) {
+            templates[index] = template
+        } else {
+            templates.append(template)
+        }
+        persistTemplates()
+    }
+
     /// Updates a template by ID; no-op if not found.
     func update(_ t: ScentsTemplate) {
         guard let i = templates.firstIndex(where: { $0.id == t.id }) else { return }

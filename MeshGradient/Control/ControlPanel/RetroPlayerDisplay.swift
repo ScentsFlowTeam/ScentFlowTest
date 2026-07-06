@@ -20,7 +20,7 @@ struct RetroPlayerDisplay: View {
         var detailText: String {
             switch self {
             case .deviceOff:
-                return "Standby"
+                return "Device Off"
             case .playing(let title, _, _):
                 return title
             case .podChange(let message):
@@ -59,6 +59,7 @@ struct RetroPlayerDisplay: View {
                     Text(state.detailText)
                         .font(.system(.title3, design: .monospaced).weight(.semibold))
                         .foregroundStyle(primaryDisplayColor)
+                        .opacity(detailTextOpacity)
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .center)
                         .multilineTextAlignment(.center)
@@ -94,6 +95,15 @@ struct RetroPlayerDisplay: View {
             return .white.opacity(0.58)
         case .playing, .podChange:
             return .white.opacity(0.8)
+        }
+    }
+
+    private var detailTextOpacity: Double {
+        switch state {
+        case .playing(let title, _, _) where title == "Unsaved Template":
+            return 0.75
+        case .deviceOff, .playing, .podChange:
+            return 1.0
         }
     }
 //

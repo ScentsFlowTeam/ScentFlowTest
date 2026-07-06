@@ -34,8 +34,8 @@ struct ExplorePage: View {
                 .buttonStyle(.plain)
 
                 NavigationLink {
-                    Text("More coming soon")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    TemplateExplorePage()
+                        .toolbar(.hidden, for: .tabBar)
                 } label: {
                     CardWithShadowContainer(
                         title: "Official Templates",
@@ -48,7 +48,7 @@ struct ExplorePage: View {
                                 .clipped()
                                 .opacity(0.7)
                         },
-                        label: { Text("Coming soon").font(.subheadline) }
+                        label: { Text("Browse and download scent mixes").font(.subheadline) }
                     )
                 }
                 .buttonStyle(.plain)

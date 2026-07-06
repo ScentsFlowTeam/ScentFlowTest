@@ -41,8 +41,7 @@ struct TemplatePreviewCard: View {
 
     /// Build a simple static palette for preview purposes.
     private func paletteForPreview(template: ScentsTemplate, device: Device) -> [Color] {
-        let byID = Dictionary(uniqueKeysWithValues: device.insertedPods.map { ($0.id, $0) })
-        let podsInDevice = template.scentPodIDs.compactMap { byID[$0] }
+        let podsInDevice = template.matchingPods(in: device)
 
         let base = podsInDevice.map { $0.color.color.opacity(0.6) }
         // debug

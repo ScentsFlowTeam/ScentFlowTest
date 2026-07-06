@@ -118,7 +118,7 @@ struct TemplatesPage: View {
                     }
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                         Button(role: .destructive) {
-                            templatesService.remove(id: template.id)
+                            delete(template)
                         } label: {
                             Label("Delete", systemImage: "trash")
                         }
@@ -149,6 +149,14 @@ struct TemplatesPage: View {
         vm.applyTemplate(template, on: device)
         templatesService.setActiveTemplateID(template.id)
         dismiss()
+    }
+
+    private func delete(_ template: ScentsTemplate) {
+        templatesService.remove(id: template.id)
+
+        if vm.currentTemplateID == template.id {
+            vm.setCurrentTemplateID(nil)
+        }
     }
 
     private func isPlaying(_ template: ScentsTemplate) -> Bool {
@@ -197,8 +205,7 @@ private struct TemplateListRow: View {
     }
 
     private var podNamesText: String {
-        let byID = Dictionary(uniqueKeysWithValues: device.insertedPods.map { ($0.id, $0) })
-        let names = template.scentPodIDs.compactMap { byID[$0]?.name }
+        let names = template.matchingPods(in: device).map(\.name)
 
         if names.isEmpty {
             return "No matching inserted pods"
@@ -231,8 +238,7 @@ private struct TemplateListPreview: View {
     }
 
     private func paletteForPreview(template: ScentsTemplate, device: Device) -> [Color] {
-        let byID = Dictionary(uniqueKeysWithValues: device.insertedPods.map { ($0.id, $0) })
-        let podsInDevice = template.scentPodIDs.compactMap { byID[$0] }
+        let podsInDevice = template.matchingPods(in: device)
 
         let base = podsInDevice.map { $0.color.color.opacity(0.6) }
 

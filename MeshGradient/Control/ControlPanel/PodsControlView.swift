@@ -11,6 +11,7 @@ struct PodsControlView: View {
     @ObservedObject var vm: GradientWheelViewModel
     @Binding var isExpanded: Bool
     var onPodIntensityChanged: (ScentPod, Double) -> Void = { _, _ in }
+    var onPodSelected: (ScentPod, Double) -> Void = { _, _ in }
 
     private enum UI {
         static let opacityRowHeight: CGFloat = 24
@@ -27,7 +28,7 @@ struct PodsControlView: View {
                     focusedID: vm.focusedPodID,
                     canSelectMore: vm.canSelectMore,
                     isPowerOn: vm.isPowerOn,
-                    onTap: { vm.toggle($0) }
+                    onTap: selectPod
                 )
             }
 
@@ -62,6 +63,16 @@ struct PodsControlView: View {
                 isExpanded = false
             }
         }
+    }
+
+    private func selectPod(_ podID: UUID) {
+        vm.toggle(podID)
+
+        guard vm.included.contains(podID),
+              let pod = vm.pods.first(where: { $0.id == podID })
+        else { return }
+
+        onPodSelected(pod, vm.opacities[podID] ?? 0)
     }
 
     private var header: some View {

@@ -119,8 +119,7 @@ final class GradientWheelViewModel: ObservableObject {
             return
         }
 
-        let insertedIDs = Set(device.insertedPods.map(\.id))
-        let ordered = template.scentPodIDs.filter { insertedIDs.contains($0) }.prefix(6)
+        let ordered = template.matchingPods(in: device).prefix(6).map(\.id)
 
         included = Set(ordered)
 

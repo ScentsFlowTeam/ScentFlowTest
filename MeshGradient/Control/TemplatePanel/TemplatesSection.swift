@@ -34,9 +34,7 @@ struct TemplatesSection: View {
                         // Persist as active via the store API
                         templatesService.setActiveTemplateID(t.id)
                     },
-                    onDeleteTemplate: { t in
-                        templatesService.remove(id: t.id)
-                    }
+                    onDeleteTemplate: deleteTemplate
                 )
             }
 
@@ -76,12 +74,20 @@ struct TemplatesSection: View {
         }
     }
 
+    private func deleteTemplate(_ template: ScentsTemplate) {
+        templatesService.remove(id: template.id)
+
+        if vm.currentTemplateID == template.id {
+            vm.setCurrentTemplateID(nil)
+        }
+    }
+
     private func saveCurrentTemplate(named name: String) {
         // Preserve a stable, user-visible order: the device’s pod order filtered by inclusion
-        let orderedIncluded = vm.pods.map(\.id).filter { vm.included.contains($0) }.prefix(6)
+        let orderedIncluded = vm.pods.filter { vm.included.contains($0.id) }.prefix(6)
         guard !orderedIncluded.isEmpty else { return }
 
-        let new = ScentsTemplate(name: name, scentPodIDs: Array(orderedIncluded))
+        let new = ScentsTemplate(name: name, scentPodNames: orderedIncluded.map(\.name))
         templatesService.add(new)                     // persists
 //        templatesService.setActiveTemplateID(new.id)  // publishes + persists
     }

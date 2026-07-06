@@ -14,6 +14,7 @@ struct ControlsSection: View {
     @State private var showingSaveAlert = false
     @State private var newTemplateName: String = ""
     @State private var showingTemplatesPage = false
+    @State private var showingTemplateExplorePage = false
     @StateObject private var turnOffTimer = TurnOffTimerController()
     @State private var listButtonBounceToken = 0
     @State private var temporaryPodDisplay: String?
@@ -36,6 +37,9 @@ struct ControlsSection: View {
                 vm: vm,
                 isExpanded: $isExpanded,
                 onPodIntensityChanged: { pod, value in
+                    showTemporaryPodDisplay(for: pod, value: value)
+                },
+                onPodSelected: { pod, value in
                     showTemporaryPodDisplay(for: pod, value: value)
                 }
             )
@@ -68,6 +72,9 @@ struct ControlsSection: View {
                 vm: vm,
                 device: device
             )
+        }
+        .navigationDestination(isPresented: $showingTemplateExplorePage) {
+            TemplateExplorePage()
         }
         .onChange(of: vm.isPowerOn) { _, isOn in
             if !isOn {
@@ -169,7 +176,7 @@ struct ControlsSection: View {
         let clamped = min(max(value, 0), maxIntensity)
         let percent = Int((clamped / maxIntensity * 100).rounded())
 
-        temporaryPodDisplay = "\(pod.name.uppercased()): \(percent)%"
+        temporaryPodDisplay = "\(pod.name): \(percent)%"
         temporaryPodDisplayTask?.cancel()
         temporaryPodDisplayTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 1_000_000_000)
@@ -183,7 +190,9 @@ struct ControlsSection: View {
             templateActionButton(
                 title: "Explore",
                 systemName: "sparkles",
-                action: {}
+                action: {
+                    showingTemplateExplorePage = true
+                }
             )
             .frame(maxWidth: .infinity)
 
@@ -242,10 +251,10 @@ struct ControlsSection: View {
     }
 
     private func saveCurrentTemplate(named name: String) {
-        let orderedIncluded = vm.pods.map(\.id).filter { vm.included.contains($0) }.prefix(6)
+        let orderedIncluded = vm.pods.filter { vm.included.contains($0.id) }.prefix(6)
         guard !orderedIncluded.isEmpty else { return }
 
-        let new = ScentsTemplate(name: name, scentPodIDs: Array(orderedIncluded))
+        let new = ScentsTemplate(name: name, scentPodNames: orderedIncluded.map(\.name))
         app.templatesService.add(new)
         app.templatesService.setActiveTemplateID(new.id)
         vm.setCurrentTemplateID(new.id)
