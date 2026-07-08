@@ -4,7 +4,7 @@ import SwiftUI
 
 struct TemplatesSection: View {
     @ObservedObject var templatesService: TemplatesService
-    @ObservedObject var vm: GradientWheelViewModel
+    @ObservedObject var runtime: DeviceRuntime
     let device: Device
 
     @State private var showingNameAlert = false
@@ -30,7 +30,7 @@ struct TemplatesSection: View {
                     templates: templatesService.templates,
                     onTapTemplate: { t in
                         // Apply to wheel (intersects with device pods and rebuilds)
-                        vm.applyTemplate(t, on: device)
+                        runtime.applyTemplate(t, on: device)
                         // Persist as active via the store API
                         templatesService.setActiveTemplateID(t.id)
                     },
@@ -77,14 +77,14 @@ struct TemplatesSection: View {
     private func deleteTemplate(_ template: ScentsTemplate) {
         templatesService.remove(id: template.id)
 
-        if vm.currentTemplateID == template.id {
-            vm.setCurrentTemplateID(nil)
+        if runtime.currentTemplateID == template.id {
+            runtime.setCurrentTemplateID(nil)
         }
     }
 
     private func saveCurrentTemplate(named name: String) {
         // Preserve a stable, user-visible order: the device’s pod order filtered by inclusion
-        let orderedIncluded = vm.pods.filter { vm.included.contains($0.id) }.prefix(6)
+        let orderedIncluded = runtime.pods.filter { runtime.included.contains($0.id) }.prefix(6)
         guard !orderedIncluded.isEmpty else { return }
 
         let new = ScentsTemplate(name: name, scentPodNames: orderedIncluded.map(\.name))

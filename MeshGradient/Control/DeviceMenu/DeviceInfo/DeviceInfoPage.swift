@@ -12,6 +12,9 @@
 //
 
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct DeviceInfoPage: View {
     let device: Device
@@ -105,9 +108,7 @@ private struct DevicePodInfoRow: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            Circle()
-                .fill(pod.color.color)
-                .frame(width: 14, height: 14)
+            podImage(for: pod)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(pod.name)
@@ -137,6 +138,56 @@ private struct DevicePodInfoRow: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color.white.opacity(0.08))
         )
+    }
+
+    private func podImage(for pod: ScentPod) -> some View {
+        Image(podImageName(for: pod))
+            .resizable()
+            .renderingMode(.original)
+            .scaledToFill()
+            .frame(width: 52, height: 52)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+            }
+    }
+
+    private func podImageName(for pod: ScentPod) -> String {
+        let imageName = "pods_\(podColorName(for: pod))"
+        return existingImageName(imageName, fallback: "pod")
+    }
+
+    private func podColorName(for pod: ScentPod) -> String {
+        let color = pod.color
+        let candidates: [(name: String, r: Double, g: Double, b: Double)] = [
+            ("red", 1.0, 0.0, 0.0),
+            ("orange", 1.0, 0.5, 0.0),
+            ("yellow", 1.0, 1.0, 0.0),
+            ("green", 0.0, 1.0, 0.0),
+            ("cyan", 0.0, 1.0, 1.0),
+            ("blue", 0.0, 0.0, 1.0),
+            ("purple", 0.5, 0.0, 0.5),
+        ]
+
+        return candidates.min { lhs, rhs in
+            colorDistance(color, lhs) < colorDistance(color, rhs)
+        }?.name ?? ""
+    }
+
+    private func colorDistance(_ color: RGBAColor, _ candidate: (name: String, r: Double, g: Double, b: Double)) -> Double {
+        let red = color.r - candidate.r
+        let green = color.g - candidate.g
+        let blue = color.b - candidate.b
+        return red * red + green * green + blue * blue
+    }
+
+    private func existingImageName(_ imageName: String, fallback: String) -> String {
+        #if canImport(UIKit)
+        UIImage(named: imageName) == nil ? fallback : imageName
+        #else
+        imageName
+        #endif
     }
 }
 

@@ -11,7 +11,7 @@ struct TemplatesPage: View {
     @Environment(\.dismiss) private var dismiss
 
     @ObservedObject var templatesService: TemplatesService
-    @ObservedObject var vm: GradientWheelViewModel
+    @ObservedObject var runtime: DeviceRuntime
     let device: Device
 
     @State private var displayMode: DisplayMode = .list
@@ -146,7 +146,7 @@ struct TemplatesPage: View {
     }
 
     private func apply(_ template: ScentsTemplate) {
-        vm.applyTemplate(template, on: device)
+        runtime.applyTemplate(template, on: device)
         templatesService.setActiveTemplateID(template.id)
         dismiss()
     }
@@ -154,13 +154,13 @@ struct TemplatesPage: View {
     private func delete(_ template: ScentsTemplate) {
         templatesService.remove(id: template.id)
 
-        if vm.currentTemplateID == template.id {
-            vm.setCurrentTemplateID(nil)
+        if runtime.currentTemplateID == template.id {
+            runtime.setCurrentTemplateID(nil)
         }
     }
 
     private func isPlaying(_ template: ScentsTemplate) -> Bool {
-        vm.isUsingTemplate && vm.currentTemplateID == template.id
+        runtime.isUsingTemplate && runtime.currentTemplateID == template.id
     }
 }
 
@@ -233,7 +233,7 @@ private struct TemplateListPreview: View {
     let device: Device
 
     var body: some View {
-        let palette = paletteForPreview(template: template, device: device)
+        let palette = template.previewPalette(in: device)
 
         return ZStack {
             if palette.isEmpty {
@@ -251,16 +251,4 @@ private struct TemplateListPreview: View {
         .frame(width: 48, height: 48)
     }
 
-    private func paletteForPreview(template: ScentsTemplate, device: Device) -> [Color] {
-        let podsInDevice = template.matchingPods(in: device)
-
-        let base = podsInDevice.map { $0.color.color.opacity(0.6) }
-
-        switch base.count {
-        case 0: return []
-        case 1: return [base[0], base[0].opacity(0.5), base[0]]
-        case 2: return [base[0], base[1], base[0].opacity(0.5)]
-        default: return base
-        }
-    }
 }

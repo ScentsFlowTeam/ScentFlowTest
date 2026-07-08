@@ -15,6 +15,9 @@ import Combine
 final class DevicesService: ObservableObject {
     @Published private(set) var devices: [Device] = []
     @Published var selectedID: UUID?
+    /// Per-device running state (which pods active, power, template, length…).
+    /// The single source of truth that the wheel and control panel render from.
+    @Published private(set) var runtimes: [UUID: DeviceRuntimeState] = [:]
 
     private let local: DevicesRepository
     // Optional future dependencies
@@ -24,10 +27,11 @@ final class DevicesService: ObservableObject {
         self.local = local
     }
 
-    /// Loads devices + selection from local storage into memory.
+    /// Loads devices + selection + runtime state from local storage into memory.
     func load() async {
         let loaded = await local.loadAll()
         devices = loaded.devices
+        runtimes = loaded.runtimes
 
         if let currentID = selectedID,
            devices.contains(where: { $0.id == currentID }) {
@@ -40,6 +44,17 @@ final class DevicesService: ObservableObject {
             seedMockIfNeeded()
             persist()
         }
+    }
+
+    /// The persisted running state for a device, if any.
+    func runtime(for id: UUID) -> DeviceRuntimeState? {
+        runtimes[id]
+    }
+
+    /// Stores the running state for a device and persists.
+    func setRuntime(_ state: DeviceRuntimeState, for id: UUID) {
+        runtimes[id] = state
+        persist()
     }
 
     /// The currently selected device, if any.
@@ -66,25 +81,22 @@ final class DevicesService: ObservableObject {
     /// Removes a device and keeps selection sensible.
     func remove(_ id: UUID) {
         devices.removeAll { $0.id == id }
+        runtimes[id] = nil
         if selectedID == id { selectedID = devices.first?.id }
         persist()
     }
 
-    /// Saves an opaque settings snapshot on the selected device.
-    func saveSettingsBlobForSelected(_ data: Data) {
-        guard let id = selectedID, let i = devices.firstIndex(where: { $0.id == id }) else { return }
-        var updated = devices
-        updated[i].savedSettingsBlob = data
-        devices = updated
-        persist()
-    }
-
-    /// Writes devices + selection to local storage.
+    /// Writes devices + selection + runtime state to local storage.
     private func persist() {
         let snapshotDevices = devices
         let snapshotSelected = selectedID
+        let snapshotRuntimes = runtimes
         Task.detached(priority: .utility) {
-            await self.local.saveAll(devices: snapshotDevices, selectedID: snapshotSelected)
+            await self.local.saveAll(
+                devices: snapshotDevices,
+                selectedID: snapshotSelected,
+                runtimes: snapshotRuntimes
+            )
         }
     }
 

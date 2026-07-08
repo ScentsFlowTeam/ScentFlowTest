@@ -7,7 +7,7 @@
 import SwiftUI
 
 struct ControlPanel: View {
-    @ObservedObject var vm: GradientWheelViewModel
+    @ObservedObject var runtime: DeviceRuntime
     @ObservedObject var templatesService: TemplatesService
     @ObservedObject var devicesService: DevicesService
 
@@ -48,7 +48,7 @@ struct ControlPanel: View {
                 case .controls:
                     if let device = currentDevice {
                         ControlsSection(
-                            vm: vm,
+                            runtime: runtime,
                             device: device,
                             size: $controlsSize
                         )
@@ -66,7 +66,7 @@ struct ControlPanel: View {
                     if let device = currentDevice {
                         TemplatesSection(
                             templatesService: templatesService,
-                            vm: vm,
+                            runtime: runtime,
                             device: device
                         )
                     } else {

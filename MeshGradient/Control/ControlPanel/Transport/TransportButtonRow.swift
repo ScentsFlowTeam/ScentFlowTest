@@ -121,8 +121,8 @@ private struct ControlButton: View {
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(isEnabled ? .primary : .secondary)
                 .frame(width: size, height: size)
-                .background(.thickMaterial, in: shape)
-                .contentShape(shape)
+//                .background(.thickMaterial, in: shape)
+//                .contentShape(shape)
                 .opacity(isEnabled ? 1.0 : 0.45)
                 .symbolEffect(.bounce, value: bounceToken)
         }
@@ -159,7 +159,7 @@ private struct GuidedPowerButton: View {
             }
             .foregroundStyle(.primary)
             .frame(width: buttonWidth, height: buttonHeight)
-            .background(.thickMaterial, in: shape)
+//            .background(.thickMaterial, in: shape)
             .contentShape(shape)
         }
         .buttonStyle(.plain)

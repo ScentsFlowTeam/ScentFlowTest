@@ -65,7 +65,7 @@ struct RetroPlayerDisplay: View {
             timelineSeparator
 
             footer
-                .frame(height: 14)
+                .frame(height: 18)
         }
         .frame(maxWidth: .infinity, minHeight: UI.displayHeight, maxHeight: UI.displayHeight, alignment: .center)
         .padding(.horizontal, 16)
@@ -149,12 +149,30 @@ struct RetroPlayerDisplay: View {
         HStack(spacing: 0) {
             Spacer(minLength: 0)
 
-            Text(templateLength.playbackText)
-                .font(.system(.footnote, design: .monospaced).weight(.semibold))
-                .foregroundStyle(headerColor.opacity(0.95))
-                .lineLimit(1)
-                .monospacedDigit()
+            playbackFooterText
         }
+    }
+
+    private var playbackFooterText: some View {
+        HStack(alignment: .center, spacing: 0) {
+            Text(PlaybackTimeFormat.clock(templateLength.elapsedDuration))
+                .font(.system(.footnote, design: .monospaced).weight(.semibold))
+                .monospacedDigit()
+
+            Text("/")
+                .font(.system(.footnote, design: .monospaced).weight(.semibold))
+
+            if templateLength.totalDuration > 0 {
+                Text(PlaybackTimeFormat.clock(templateLength.totalDuration))
+                    .font(.system(.footnote, design: .monospaced).weight(.semibold))
+                    .monospacedDigit()
+            } else {
+                Image(systemName: "infinity")
+                    .font(.system(size: 14, weight: .bold))
+            }
+        }
+        .foregroundStyle(headerColor.opacity(0.95))
+        .lineLimit(1)
     }
 
     private func timerDotOffset(width: CGFloat) -> CGFloat {

@@ -11,13 +11,7 @@ enum DeviceRunStatus: Equatable {
         }
     }
 
-    static func status(for device: Device) -> DeviceRunStatus {
-        guard let blob = device.savedSettingsBlob,
-              let settings = try? JSONDecoder().decode(GradientWheelViewModel.WheelSettings.self, from: blob)
-        else {
-            return .idle
-        }
-
-        return settings.isPowerOn ? .running : .idle
+    static func status(runtime: DeviceRuntimeState?) -> DeviceRunStatus {
+        (runtime?.isPowerOn ?? false) ? .running : .idle
     }
 }

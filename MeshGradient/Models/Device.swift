@@ -14,19 +14,16 @@ struct Device: Identifiable, Codable, Equatable {
     var name: String
     var insertedPods: [ScentPod]
     var isMock: Bool
-    var savedSettingsBlob: Data?
-    
+
     init(
         id: UUID = .init(),
         name: String,
         insertedPods: [ScentPod],
-        isMock: Bool = false,
-        savedSettingsBlob: Data? = nil
+        isMock: Bool = false
     ) {
         self.id = id
         self.name = name
         self.insertedPods = insertedPods
         self.isMock = isMock
-        self.savedSettingsBlob = savedSettingsBlob
     }
 }

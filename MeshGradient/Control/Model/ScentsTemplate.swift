@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftUI
 
 /// Template references pods by scent names so templates can be shared across devices.
 public struct ScentsTemplate: Identifiable, Codable, Hashable {
@@ -62,6 +63,17 @@ extension ScentsTemplate {
 
         return scentPodNames.compactMap { name in
             podsByName[Self.normalizedPodName(name)]?.first
+        }
+    }
+
+    func previewPalette(in device: Device) -> [Color] {
+        let base = matchingPods(in: device).map { $0.color.color.opacity(0.6) }
+
+        switch base.count {
+        case 0: return []
+        case 1: return [base[0], base[0].opacity(0.5), base[0]]
+        case 2: return [base[0], base[1], base[0].opacity(0.5)]
+        default: return base
         }
     }
 

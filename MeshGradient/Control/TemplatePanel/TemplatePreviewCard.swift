@@ -7,7 +7,7 @@ struct TemplatePreviewCard: View {
     let device: Device
 
     var body: some View {
-        let palette = paletteForPreview(template: template, device: device)
+        let palette = template.previewPalette(in: device)
 
         return VStack(spacing: 8) {
             if palette.isEmpty {
@@ -55,19 +55,4 @@ struct TemplatePreviewCard: View {
         return String(format: "%02d:%02d", minutes, seconds)
     }
 
-    /// Build a simple static palette for preview purposes.
-    private func paletteForPreview(template: ScentsTemplate, device: Device) -> [Color] {
-        let podsInDevice = template.matchingPods(in: device)
-
-        let base = podsInDevice.map { $0.color.color.opacity(0.6) }
-        // debug
-        // print("Template \(template.name) → matched \(base.count) pods")
-
-        switch base.count {
-        case 0: return []
-        case 1: return [base[0], base[0].opacity(0.5), base[0]]
-        case 2: return [base[0], base[1], base[0].opacity(0.5)]
-        default: return base
-        }
-    }
 }

@@ -19,7 +19,10 @@ struct ControlPage: View {
 
     @EnvironmentObject private var app: AppModel
 
-    @StateObject private var vm = GradientWheelViewModel()
+    // Source of truth for the device's running state; the wheel and the control
+    // panel both bind to `runtime`. `render` is the wheel's view-only projection.
+    @StateObject private var runtime = DeviceRuntime()
+    @StateObject private var render = WheelRenderModel()
 
     @State private var controlsSize: PodsControlSize = .small
     @State private var didInitialLoad = false
@@ -41,35 +44,21 @@ struct ControlPage: View {
         selectedDevice?.name ?? "Device"
     }
 
-    private func persist(_ settings: GradientWheelViewModel.WheelSettings) {
-        if let data = try? JSONEncoder().encode(settings) {
-            app.devicesService.saveSettingsBlobForSelected(data)
-        }
+    private func persist(_ state: DeviceRuntimeState) {
+        guard let id = app.devicesService.selectedID else { return }
+        app.devicesService.setRuntime(state, for: id)
     }
 
     private func loadDeviceIntoVM(_ device: Device) {
         isHydratingVM = true
         allowsCirclePowerTransition = false
 
-        vm.updateDevicePods(device.insertedPods)
+        runtime.updateDevicePods(device.insertedPods)
+        runtime.apply(app.devicesService.runtime(for: device.id) ?? DeviceRuntimeState())
 
-        if let blob = device.savedSettingsBlob,
-           let decoded = try? JSONDecoder().decode(GradientWheelViewModel.WheelSettings.self, from: blob) {
-            vm.load(from: decoded)
-        } else {
-            // First-time / no-blob fallback:
-            // build a default state for THIS device, but do not let hydration save loop fire
-            let empty = GradientWheelViewModel.WheelSettings(
-                isPowerOn: false,
-                fanSpeed: 0.5,
-                wheel: .init(
-                    included: [],
-                    opacities: [:],
-                    focusedPodID: nil
-                )
-            )
-            vm.load(from: empty)
-        }
+        // Rebind the render model so this device's loaded state renders without
+        // a fade animation (rebinding resets the "initial render" flag).
+        render.bind(to: runtime)
 
         // Let all @Published updates settle before re-enabling persistence
         DispatchQueue.main.async {
@@ -77,7 +66,7 @@ struct ControlPage: View {
             allowsCirclePowerTransition = true
             // Persist any load-time normalization (e.g. an anchored timer start
             // date) so timer progress survives future navigation.
-            persist(vm.exportSettings())
+            persist(runtime.state)
         }
     }
 
@@ -85,12 +74,12 @@ struct ControlPage: View {
         ZStack {
             VStack(spacing: 0) {
                 GradientContainerCircle(
-                    colors: vm.selectedColorsWeighted,
-                    animate: vm.isPowerOn,
-                    meshOpacity: vm.wheelOpacity,
+                    colors: render.colors,
+                    animate: runtime.isPowerOn,
+                    meshOpacity: render.wheelOpacity,
                     animatePowerTransition: allowsCirclePowerTransition,
-                    isOn: vm.isPowerOn,
-                    onToggle: { vm.togglePower() }
+                    isOn: runtime.isPowerOn,
+                    onToggle: { runtime.togglePower() }
                 )
                 .aspectRatio(1, contentMode: .fit)
                 .padding(.horizontal, UI.wheelPadding)
@@ -106,7 +95,7 @@ struct ControlPage: View {
                 Spacer().frame(minHeight: 30)
 
                 ControlPanel(
-                    vm: vm,
+                    runtime: runtime,
                     templatesService: app.templatesService,
                     devicesService: app.devicesService,
                     segment: $segment,
@@ -138,13 +127,19 @@ struct ControlPage: View {
                 }
             }
         }
-        .onReceive(vm.settingsPublisher) { settings in
+        .onReceive(runtime.statePublisher) { state in
             guard !isHydratingVM else { return }
-            persist(settings)
+            persist(state)
         }
-        .onChange(of: vm.isPowerOn) { _, _ in
+        .onDisappear {
+            // Flush immediately on leave so a change made inside the debounce
+            // window (e.g. selecting a template then navigating away) isn't lost.
             guard !isHydratingVM else { return }
-            persist(vm.exportSettings())
+            persist(runtime.state)
+        }
+        .onChange(of: runtime.isPowerOn) { _, _ in
+            guard !isHydratingVM else { return }
+            persist(runtime.state)
         }
         .task {
             guard !didInitialLoad else { return }

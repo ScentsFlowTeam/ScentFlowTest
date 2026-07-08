@@ -7,16 +7,17 @@
 import Foundation
 
 protocol DevicesRepository {
-    func loadAll() async -> (devices: [Device], selectedID: UUID?)
-    func saveAll(devices: [Device], selectedID: UUID?) async
+    func loadAll() async -> (devices: [Device], selectedID: UUID?, runtimes: [UUID: DeviceRuntimeState])
+    func saveAll(devices: [Device], selectedID: UUID?, runtimes: [UUID: DeviceRuntimeState]) async
 }
 
 // LocalDevicesRepository.swift
 struct LocalDevicesRepository: DevicesRepository {
-    private let devicesKey = "devices_v2"
-    private let selectedKey = "devices_selected_id_v2"
+    private let devicesKey = "devices_v3"
+    private let selectedKey = "devices_selected_id_v3"
+    private let runtimesKey = "devices_runtimes_v3"
 
-    func loadAll() async -> (devices: [Device], selectedID: UUID?) {
+    func loadAll() async -> (devices: [Device], selectedID: UUID?, runtimes: [UUID: DeviceRuntimeState]) {
         await Task.detached(priority: .utility) {
             let devices: [Device] = {
                 guard let data = UserDefaults.standard.data(forKey: devicesKey) else { return [] }
@@ -25,16 +26,20 @@ struct LocalDevicesRepository: DevicesRepository {
             let selectedID = UserDefaults.standard
                 .string(forKey: selectedKey)
                 .flatMap(UUID.init(uuidString:))
-            return (devices, selectedID)
+            let runtimes: [UUID: DeviceRuntimeState] = {
+                guard let data = UserDefaults.standard.data(forKey: runtimesKey) else { return [:] }
+                return (try? JSONDecoder().decode([UUID: DeviceRuntimeState].self, from: data)) ?? [:]
+            }()
+            return (devices, selectedID, runtimes)
         }.value
     }
 
-    func saveAll(devices: [Device], selectedID: UUID?) async {
+    func saveAll(devices: [Device], selectedID: UUID?, runtimes: [UUID: DeviceRuntimeState]) async {
         await Task.detached(priority: .utility) {
             let enc = JSONEncoder()
-            let data = try? enc.encode(devices)
-            UserDefaults.standard.set(data, forKey: devicesKey)
+            UserDefaults.standard.set(try? enc.encode(devices), forKey: devicesKey)
             UserDefaults.standard.set(selectedID?.uuidString, forKey: selectedKey)
+            UserDefaults.standard.set(try? enc.encode(runtimes), forKey: runtimesKey)
         }.value
     }
 }

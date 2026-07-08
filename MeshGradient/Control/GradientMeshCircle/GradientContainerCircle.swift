@@ -7,7 +7,7 @@ struct GradientContainerCircle: View {
     private let deviceTransitionDuration: TimeInterval = 0.9
     private let deviceImageWidthScale: CGFloat = 1.55
     private let deviceZoomScale: CGFloat = 3
-    private let circleDeviceInsetScale: CGFloat = 0.28
+    private let circleDeviceInsetScale: CGFloat = 0.38
     var animate: Bool = true
     var isTemplate: Bool = false
     var meshOpacity: Double = 1.0
@@ -34,10 +34,6 @@ struct GradientContainerCircle: View {
             ZStack {
                 // Mesh-based halo extending beyond the ring
                 if !isTemplate {
-                    
-                    
-                    
-                    
                         MeshHaloShadowFromMesh(
                             colors: displayColors,
                             animate: animate,
@@ -90,22 +86,7 @@ struct GradientContainerCircle: View {
                     animateTransition: animatePowerTransition
                 )
             }
-//
-//            // Power Button Testing
-//            if !isTemplate {
-//                // Center power button overlay (60x60), icon-only.
-//                Button(action: onToggle) {
-//                    Image(systemName: "power")
-//                        .font(.system(size: 26, weight: .semibold))
-//                        .frame(width: 60, height: 60)
-//                        .animation(nil, value: isOn)
-//                }
-//                                        .clipShape(Circle())
-//                .transaction { txn in txn.animation = nil }
-//                .buttonStyle(.glass)
-//                .accessibilityLabel("Toggle power")
-//                .accessibilityValue(isOn ? "On" : "Off")
-//            }
+
 
         }
         .onAppear {

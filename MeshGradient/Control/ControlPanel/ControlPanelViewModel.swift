@@ -23,52 +23,15 @@ final class ControlPanelViewModel: ObservableObject {
         case modified(ScentsTemplate)
     }
 
-    func onAppear(
-        gradientVM: GradientWheelViewModel,
-        templatesService: TemplatesService,
-        templateLength: TemplateLengthController
-    ) {
-        syncTemplateLength(gradientVM: gradientVM, templateLength: templateLength)
-    }
-
-    func templateIDChanged(
-        to id: UUID?,
-        gradientVM: GradientWheelViewModel,
-        templatesService: TemplatesService,
-        templateLength: TemplateLengthController
-    ) {
-        guard id != nil else { return }
-        syncTemplateLength(gradientVM: gradientVM, templateLength: templateLength)
-    }
-
-    /// Drives the live countdown controller from the persisted per-session length
-    /// on the wheel VM (the single source of truth), resuming from the stored
-    /// start date so elapsed progress is preserved across navigation.
-    func syncTemplateLength(
-        gradientVM: GradientWheelViewModel,
-        templateLength: TemplateLengthController
-    ) {
-        templateLength.setLength(
-            gradientVM.templateLengthDuration,
-            startedAt: gradientVM.templateLengthStartDate ?? Date()
-        )
-    }
-
-    func powerChanged(isOn: Bool, templateLength: TemplateLengthController) {
-        if !isOn {
-            templateLength.clear()
-        }
-    }
-
     func templateMode(
-        gradientVM: GradientWheelViewModel,
+        runtime: DeviceRuntime,
         templatesService: TemplatesService
     ) -> TemplateMode {
-        if let activeTemplate = activeTemplate(gradientVM: gradientVM, templatesService: templatesService) {
+        if let activeTemplate = activeTemplate(runtime: runtime, templatesService: templatesService) {
             return .saved(activeTemplate)
         }
 
-        if let sourceTemplate = sourceTemplate(gradientVM: gradientVM, templatesService: templatesService) {
+        if let sourceTemplate = sourceTemplate(runtime: runtime, templatesService: templatesService) {
             return .modified(sourceTemplate)
         }
 
@@ -76,22 +39,22 @@ final class ControlPanelViewModel: ObservableObject {
     }
 
     func sourceTemplate(
-        gradientVM: GradientWheelViewModel,
+        runtime: DeviceRuntime,
         templatesService: TemplatesService
     ) -> ScentsTemplate? {
-        guard let sourceTemplateID = gradientVM.sourceTemplateID else { return nil }
+        guard let sourceTemplateID = runtime.sourceTemplateID else { return nil }
         return templatesService.templates.first(where: { $0.id == sourceTemplateID })
     }
 
-    func canSaveTemplate(gradientVM: GradientWheelViewModel) -> Bool {
-        !orderedIncludedPods(gradientVM: gradientVM).isEmpty
+    func canSaveTemplate(runtime: DeviceRuntime) -> Bool {
+        !orderedIncludedPods(runtime: runtime).isEmpty
     }
 
     func saveActionTitle(
-        gradientVM: GradientWheelViewModel,
+        runtime: DeviceRuntime,
         templatesService: TemplatesService
     ) -> String {
-        sourceTemplate(gradientVM: gradientVM, templatesService: templatesService) == nil ? "New Template" : "Save Template"
+        sourceTemplate(runtime: runtime, templatesService: templatesService) == nil ? "New Template" : "Save Template"
     }
 
     func saveSystemName() -> String {
@@ -99,24 +62,24 @@ final class ControlPanelViewModel: ObservableObject {
     }
 
     func playerDisplayState(
-        gradientVM: GradientWheelViewModel,
+        runtime: DeviceRuntime,
         templatesService: TemplatesService
     ) -> RetroPlayerDisplay.DisplayState {
-        guard gradientVM.isPowerOn else {
+        guard runtime.isPowerOn else {
             return .deviceOff(
-                title: displayTemplateTitle(gradientVM: gradientVM, templatesService: templatesService)
+                title: displayTemplateTitle(runtime: runtime, templatesService: templatesService)
             )
         }
 
-        let currentTemplate = currentTemplate(gradientVM: gradientVM, templatesService: templatesService)
+        let currentTemplate = currentTemplate(runtime: runtime, templatesService: templatesService)
         let position = currentTemplate.flatMap { template in
             templatesService.templates.firstIndex(where: { $0.id == template.id }).map { $0 + 1 }
         }
 
         return .playing(
-            title: displayTemplateTitle(gradientVM: gradientVM, templatesService: templatesService),
-            modeText: displayModeText(gradientVM: gradientVM, templatesService: templatesService),
-            bodyText: activePodsIntensityText(gradientVM: gradientVM),
+            title: displayTemplateTitle(runtime: runtime, templatesService: templatesService),
+            modeText: displayModeText(runtime: runtime, templatesService: templatesService),
+            bodyText: activePodsIntensityText(runtime: runtime),
             position: position,
             total: templatesService.templates.count
         )
@@ -136,10 +99,10 @@ final class ControlPanelViewModel: ObservableObject {
     }
 
     func handleSave(
-        gradientVM: GradientWheelViewModel,
+        runtime: DeviceRuntime,
         templatesService: TemplatesService
     ) {
-        if sourceTemplate(gradientVM: gradientVM, templatesService: templatesService) != nil {
+        if sourceTemplate(runtime: runtime, templatesService: templatesService) != nil {
             showingSaveOptions = true
         } else {
             beginSaveTemplate(prefilledName: "Mix \(templatesService.templates.count + 1)")
@@ -153,21 +116,20 @@ final class ControlPanelViewModel: ObservableObject {
 
     func saveCurrentTemplate(
         named name: String,
-        gradientVM: GradientWheelViewModel,
-        templatesService: TemplatesService,
-        templateLength: TemplateLengthController
+        runtime: DeviceRuntime,
+        templatesService: TemplatesService
     ) {
-        let orderedIncluded = orderedIncludedPods(gradientVM: gradientVM)
+        let orderedIncluded = orderedIncludedPods(runtime: runtime)
         guard !orderedIncluded.isEmpty else { return }
 
         let new = ScentsTemplate(
             name: name,
             scentPodNames: orderedIncluded.map(\.name),
-            duration: currentTemplateDuration(templateLength: templateLength)
+            duration: currentTemplateDuration(runtime: runtime)
         )
         templatesService.add(new)
         templatesService.setActiveTemplateID(new.id)
-        gradientVM.setCurrentTemplateID(new.id)
+        runtime.setCurrentTemplateID(new.id)
         newTemplateName = ""
 
         bounceTemplateListButton()
@@ -175,54 +137,50 @@ final class ControlPanelViewModel: ObservableObject {
 
     func updateTemplate(
         _ template: ScentsTemplate,
-        gradientVM: GradientWheelViewModel,
-        templatesService: TemplatesService,
-        templateLength: TemplateLengthController
+        runtime: DeviceRuntime,
+        templatesService: TemplatesService
     ) {
-        let orderedIncluded = orderedIncludedPods(gradientVM: gradientVM)
+        let orderedIncluded = orderedIncludedPods(runtime: runtime)
         guard !orderedIncluded.isEmpty else { return }
 
         var updated = template
         updated.scentPodNames = orderedIncluded.map(\.name)
-        updated.duration = currentTemplateDuration(templateLength: templateLength)
+        updated.duration = currentTemplateDuration(runtime: runtime)
         templatesService.update(updated)
         templatesService.setActiveTemplateID(updated.id)
-        gradientVM.setCurrentTemplateID(updated.id)
+        runtime.setCurrentTemplateID(updated.id)
 
         bounceTemplateListButton()
     }
 
+    /// Writes the length to the wheel VM (the single source of truth). The bound
+    /// TemplateLengthController projects the live clock from it automatically.
     func setTemplateLength(
         _ duration: TimeInterval,
-        gradientVM: GradientWheelViewModel,
-        templateLength: TemplateLengthController
+        runtime: DeviceRuntime
     ) {
-        let startedAt = Date()
-        gradientVM.setTemplateLengthDuration(duration, startDate: startedAt)
-        templateLength.setLength(duration, startedAt: startedAt)
+        runtime.setTemplateLengthDuration(duration, startDate: Date())
+        runtime.markCurrentTemplateModified()
     }
 
-    func clearTemplateLength(
-        gradientVM: GradientWheelViewModel,
-        templateLength: TemplateLengthController
-    ) {
-        gradientVM.setTemplateLengthDuration(nil, startDate: nil)
-        templateLength.clear()
+    func clearTemplateLength(runtime: DeviceRuntime) {
+        runtime.setTemplateLengthDuration(nil, startDate: nil)
+        runtime.markCurrentTemplateModified()
     }
 
     private func activeTemplate(
-        gradientVM: GradientWheelViewModel,
+        runtime: DeviceRuntime,
         templatesService: TemplatesService
     ) -> ScentsTemplate? {
-        guard let id = gradientVM.currentTemplateID else { return nil }
+        guard let id = runtime.currentTemplateID else { return nil }
         return templatesService.templates.first(where: { $0.id == id })
     }
 
     private func currentTemplate(
-        gradientVM: GradientWheelViewModel,
+        runtime: DeviceRuntime,
         templatesService: TemplatesService
     ) -> ScentsTemplate? {
-        switch templateMode(gradientVM: gradientVM, templatesService: templatesService) {
+        switch templateMode(runtime: runtime, templatesService: templatesService) {
         case .unsaved:
             return nil
         case .saved(let template), .modified(let template):
@@ -231,10 +189,10 @@ final class ControlPanelViewModel: ObservableObject {
     }
 
     private func displayTemplateTitle(
-        gradientVM: GradientWheelViewModel,
+        runtime: DeviceRuntime,
         templatesService: TemplatesService
     ) -> String {
-        switch templateMode(gradientVM: gradientVM, templatesService: templatesService) {
+        switch templateMode(runtime: runtime, templatesService: templatesService) {
         case .unsaved:
             return "New Template"
         case .saved(let template), .modified(let template):
@@ -243,10 +201,10 @@ final class ControlPanelViewModel: ObservableObject {
     }
 
     private func displayModeText(
-        gradientVM: GradientWheelViewModel,
+        runtime: DeviceRuntime,
         templatesService: TemplatesService
     ) -> String? {
-        switch templateMode(gradientVM: gradientVM, templatesService: templatesService) {
+        switch templateMode(runtime: runtime, templatesService: templatesService) {
         case .unsaved:
             return nil
         case .saved:
@@ -256,16 +214,16 @@ final class ControlPanelViewModel: ObservableObject {
         }
     }
 
-    private func activePodsIntensityText(gradientVM: GradientWheelViewModel) -> String {
+    private func activePodsIntensityText(runtime: DeviceRuntime) -> String {
         if let adjustingPodText {
             return adjustingPodText
         }
 
-        let activePods = gradientVM.pods.filter { gradientVM.included.contains($0.id) }
+        let activePods = runtime.pods.filter { runtime.included.contains($0.id) }
         guard !activePods.isEmpty else { return "No active pods" }
 
         return activePods
-            .map { pod in intensityText(for: pod, value: gradientVM.opacities[pod.id] ?? 0) }
+            .map { pod in intensityText(for: pod, value: runtime.opacities[pod.id] ?? 0) }
             .joined(separator: "  ")
     }
 
@@ -276,12 +234,12 @@ final class ControlPanelViewModel: ObservableObject {
         return "\(pod.name): \(percent)%"
     }
 
-    private func currentTemplateDuration(templateLength: TemplateLengthController) -> TimeInterval? {
-        templateLength.totalDuration > 0 ? templateLength.totalDuration : nil
+    private func currentTemplateDuration(runtime: DeviceRuntime) -> TimeInterval? {
+        runtime.templateLengthDuration
     }
 
-    private func orderedIncludedPods(gradientVM: GradientWheelViewModel) -> ArraySlice<ScentPod> {
-        gradientVM.pods.filter { gradientVM.included.contains($0.id) }.prefix(6)
+    private func orderedIncludedPods(runtime: DeviceRuntime) -> ArraySlice<ScentPod> {
+        runtime.pods.filter { runtime.included.contains($0.id) }.prefix(6)
     }
 
     private func bounceTemplateListButton() {

@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ControlsSection: View {
     @EnvironmentObject private var app: AppModel
-    @ObservedObject var vm: GradientWheelViewModel
+    @ObservedObject var runtime: DeviceRuntime
     let device: Device
     @Binding var size: PodsControlSize
 
@@ -21,7 +21,7 @@ struct ControlsSection: View {
         VStack(spacing: UI.sectionSpacing) {
             ControlScreenView(
                 state: panel.playerDisplayState(
-                    gradientVM: vm,
+                    runtime: runtime,
                     templatesService: app.templatesService
                 ),
                 templateLength: templateLength
@@ -30,28 +30,28 @@ struct ControlsSection: View {
             .zIndex(1)
 
             PodsControlView(
-                vm: vm,
+                runtime: runtime,
                 templateLength: templateLength,
                 size: $size,
-                canSaveTemplate: vm.isPowerOn && panel.canSaveTemplate(gradientVM: vm),
-                saveActionTitle: panel.saveActionTitle(gradientVM: vm, templatesService: app.templatesService),
+                canSaveTemplate: runtime.isPowerOn && panel.canSaveTemplate(runtime: runtime),
+                saveActionTitle: panel.saveActionTitle(runtime: runtime, templatesService: app.templatesService),
                 saveSystemName: panel.saveSystemName(),
-                onSaveTemplate: { panel.handleSave(gradientVM: vm, templatesService: app.templatesService) },
-                onStartTemplateLength: { panel.setTemplateLength($0, gradientVM: vm, templateLength: templateLength) },
-                onClearTemplateLength: { panel.clearTemplateLength(gradientVM: vm, templateLength: templateLength) },
+                onSaveTemplate: { panel.handleSave(runtime: runtime, templatesService: app.templatesService) },
+                onStartTemplateLength: { panel.setTemplateLength($0, runtime: runtime) },
+                onClearTemplateLength: { panel.clearTemplateLength(runtime: runtime) },
                 onPodIntensityChanged: panel.showAdjustingPod,
                 onPodSelected: panel.showAdjustingPod
             )
 
             ControlTransportSection(
-                vm: vm,
+                runtime: runtime,
                 templatesService: app.templatesService,
                 listButtonBounceToken: panel.listButtonBounceToken,
                 onPreviousTemplate: {
-                    app.applyPreviousTemplate(to: vm, on: device)
+                    app.applyPreviousTemplate(to: runtime, on: device)
                 },
                 onNextTemplate: {
-                    app.applyNextTemplate(to: vm, on: device)
+                    app.applyNextTemplate(to: runtime, on: device)
                 },
                 onOpenTemplateList: { panel.showingTemplatesPage = true }
             )
@@ -60,20 +60,25 @@ struct ControlsSection: View {
         .frame(maxWidth: .infinity, alignment: .top)
         .contentShape(Rectangle())
         .simultaneousGesture(expansionDragGesture)
-        .confirmationDialog("", isPresented: $panel.showingSaveOptions, titleVisibility: .hidden) {
-            if let sourceTemplate = panel.sourceTemplate(gradientVM: vm, templatesService: app.templatesService) {
-                Button("Update \(sourceTemplate.name)") {
-                    panel.updateTemplate(
-                        sourceTemplate,
-                        gradientVM: vm,
-                        templatesService: app.templatesService,
-                        templateLength: templateLength
-                    )
-                }
-
-                Button("Save as New Template") {
-                    panel.beginSaveTemplate(prefilledName: "\(sourceTemplate.name) Copy")
-                }
+        .sheet(isPresented: $panel.showingSaveOptions) {
+            if let sourceTemplate = panel.sourceTemplate(runtime: runtime, templatesService: app.templatesService) {
+                SaveTemplateOptionsMenu(
+                    sourceTemplate: sourceTemplate,
+                    onUpdate: {
+                        panel.showingSaveOptions = false
+                        panel.updateTemplate(
+                            sourceTemplate,
+                            runtime: runtime,
+                            templatesService: app.templatesService
+                        )
+                    },
+                    onSaveAsNew: {
+                        panel.showingSaveOptions = false
+                        panel.beginSaveTemplate(prefilledName: "\(sourceTemplate.name) Copy")
+                    }
+                )
+                .presentationDetents([.height(170)])
+                .presentationDragIndicator(.visible)
             }
         }
         .alert("New Template", isPresented: $panel.showingSaveAlert) {
@@ -86,9 +91,8 @@ struct ControlsSection: View {
                 guard !name.isEmpty else { return }
                 panel.saveCurrentTemplate(
                     named: name,
-                    gradientVM: vm,
-                    templatesService: app.templatesService,
-                    templateLength: templateLength
+                    runtime: runtime,
+                    templatesService: app.templatesService
                 )
             }
 
@@ -101,44 +105,26 @@ struct ControlsSection: View {
         .navigationDestination(isPresented: $panel.showingTemplatesPage) {
             TemplatesPage(
                 templatesService: app.templatesService,
-                vm: vm,
+                runtime: runtime,
                 device: device
             )
         }
         .onAppear {
-            panel.onAppear(
-                gradientVM: vm,
-                templatesService: app.templatesService,
-                templateLength: templateLength
-            )
-            // When the length elapses, advance to the next template in the list.
+            // The live clock projects itself from the wheel VM's persisted length
+            // + power state; no manual per-change syncing needed.
+            templateLength.bind(to: runtime)
+            // When the length elapses, advance to the next template (looping),
+            // carrying the cadence so playback keeps going.
             templateLength.onFinished = {
-                app.applyNextTemplate(to: vm, on: device)
+                app.playNextTemplateOnFinish(to: runtime, on: device)
             }
-        }
-        .onChange(of: vm.currentTemplateID) { _, id in
-            panel.templateIDChanged(
-                to: id,
-                gradientVM: vm,
-                templatesService: app.templatesService,
-                templateLength: templateLength
-            )
-        }
-        .onChange(of: vm.isPowerOn) { _, isOn in
-            panel.powerChanged(isOn: isOn, templateLength: templateLength)
-        }
-        .onChange(of: vm.templateLengthDuration) { _, _ in
-            panel.syncTemplateLength(gradientVM: vm, templateLength: templateLength)
-        }
-        .onChange(of: vm.templateLengthStartDate) { _, _ in
-            panel.syncTemplateLength(gradientVM: vm, templateLength: templateLength)
         }
     }
 
     private var expansionDragGesture: some Gesture {
         DragGesture(minimumDistance: 18)
             .onEnded { value in
-                guard vm.isPowerOn else { return }
+                guard runtime.isPowerOn else { return }
 
                 let translation = value.translation
                 guard abs(translation.height) > abs(translation.width),
@@ -153,7 +139,7 @@ struct ControlsSection: View {
                     : (bigSwipe ? .small : size.smaller)
 
                 // The per-pod sliders (large) need more than one pod to be useful.
-                if target == .large, vm.pods.count <= 1 {
+                if target == .large, runtime.pods.count <= 1 {
                     target = .medium
                 }
 

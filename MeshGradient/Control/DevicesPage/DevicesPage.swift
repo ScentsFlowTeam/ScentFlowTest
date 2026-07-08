@@ -17,6 +17,7 @@ struct DevicesPage: View {
             } else {
                 DevicesContentView(
                     devicesService: app.devicesService,
+                    templatesService: app.templatesService,
                     notificationService: app.deviceNotificationsService,
                     onOpen: open,
                     onAddDevice: { showingScanner = true },
@@ -76,6 +77,7 @@ struct DevicesPage: View {
 
 private struct DevicesContentView: View {
     @ObservedObject var devicesService: DevicesService
+    @ObservedObject var templatesService: TemplatesService
     @ObservedObject var notificationService: DeviceNotificationsService
 
     let onOpen: (Device) -> Void
@@ -95,7 +97,14 @@ private struct DevicesContentView: View {
                             } label: {
                                 DeviceCard(
                                     device: device,
-                                    status: DeviceRunStatus.status(for: device)
+                                    status: DeviceRunStatus.status(
+                                        runtime: devicesService.runtime(for: device.id)
+                                    ),
+                                    playback: DevicePlayback.make(
+                                        runtime: devicesService.runtime(for: device.id),
+                                        templates: templatesService.templates,
+                                        device: device
+                                    )
                                 )
                             }
                             .buttonStyle(.plain)

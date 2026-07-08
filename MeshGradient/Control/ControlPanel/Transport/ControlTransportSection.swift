@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ControlTransportSection: View {
-    @ObservedObject var vm: GradientWheelViewModel
+    @ObservedObject var runtime: DeviceRuntime
     @ObservedObject var templatesService: TemplatesService
 
     let listButtonBounceToken: Int
@@ -11,11 +11,11 @@ struct ControlTransportSection: View {
 
     var body: some View {
         TransportButtonRow(
-            isOn: vm.isPowerOn,
+            isOn: runtime.isPowerOn,
             onToggle: togglePower,
             showsTemplateTransport: !templatesService.templates.isEmpty,
-            canGoPrevious: vm.isUsingTemplate && templatesService.canGoPrevious,
-            canGoNext: vm.isUsingTemplate && templatesService.canGoNext,
+            canGoPrevious: runtime.isUsingTemplate && templatesService.canGoPrevious,
+            canGoNext: runtime.isUsingTemplate && templatesService.canGoNext,
             listButtonBounceToken: listButtonBounceToken,
             onPrevious: onPreviousTemplate,
             onNext: onNextTemplate,
@@ -25,7 +25,7 @@ struct ControlTransportSection: View {
 
     private func togglePower() {
         withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-            vm.togglePower()
+            runtime.togglePower()
         }
     }
 }

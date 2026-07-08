@@ -15,16 +15,10 @@ struct TemplateLengthButton: View {
             guard isDeviceOn || controller.isActive else { return }
             showingSheet = true
         } label: {
-            Image(systemName: "timer")
-                .font(.system(size: 16, weight: .semibold))
+            buttonLabel
                 .foregroundStyle(timerForeground)
                 .frame(width: 64, height: 44)
                 .background(timerBackground, in: Capsule())
-                .overlay {
-                    if controller.isActive {
-                        Capsule().strokeBorder(Color.accentColor, lineWidth: 1.5)
-                    }
-                }
                 .contentShape(Capsule())
                 .opacity((isDeviceOn || controller.isActive) ? 1.0 : 0.45)
 
@@ -112,7 +106,7 @@ struct TemplateLengthButton: View {
                         .frame(height: 50)
                         .background(
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(Color.accentColor)
+                                .fill(Color.white.opacity(0.12))
                         )
                         .foregroundStyle(.white)
                     }
@@ -164,8 +158,12 @@ struct TemplateLengthButton: View {
                         .frame(height: 50)
                         .background(
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(selectedDuration > 0 ? Color.accentColor : Color.gray.opacity(0.45))
+                                .fill(selectedDuration > 0 ? Color.white.opacity(0.08) : Color.white.opacity(0.04))
                         )
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .strokeBorder(Color.white, lineWidth: 1)
+                        }
                         .foregroundStyle(.white)
                     }
                     .buttonStyle(.plain)
@@ -179,6 +177,31 @@ struct TemplateLengthButton: View {
 
     private var selectedDuration: TimeInterval {
         TimeInterval((selectedHours * 3600) + (selectedMinutes * 60))
+    }
+
+    @ViewBuilder
+    private var buttonLabel: some View {
+        if controller.totalDuration > 0 {
+            Text(compactClock(controller.totalDuration))
+                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+        } else {
+            Image(systemName: "infinity")
+                .font(.system(size: 17, weight: .semibold))
+        }
+    }
+
+    private func compactClock(_ duration: TimeInterval) -> String {
+        let totalSeconds = max(0, Int(duration.rounded(.down)))
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            return String(format: "%d:%02d", minutes, seconds)
+        }
     }
 
     // Accent-tinted while a length is running, neutral material otherwise.
