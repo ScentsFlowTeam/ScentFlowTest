@@ -75,7 +75,8 @@ final class ControlPanelViewModel: ObservableObject {
 
     func playerDisplayState(
         runtime: DeviceRuntime,
-        templatesService: TemplatesService
+        templatesService: TemplatesService,
+        size: PodsControlSize
     ) -> RetroPlayerDisplay.DisplayState {
         guard runtime.isPowerOn else {
             return .deviceOff(
@@ -88,10 +89,16 @@ final class ControlPanelViewModel: ObservableObject {
             templatesService.templates.firstIndex(where: { $0.id == template.id }).map { $0 + 1 }
         }
 
+        // Folded (small) shows just the template title in the body — the per-pod
+        // percentages are only useful once the control is expanded.
+        let bodyText = size == .small
+            ? displayTemplateTitle(runtime: runtime, templatesService: templatesService)
+            : activePodsIntensityText(runtime: runtime)
+
         return .playing(
-            title: displayTemplateTitle(runtime: runtime, templatesService: templatesService),
+            title: size == .small ? "" : displayTemplateTitle(runtime: runtime, templatesService: templatesService),
             modeText: displayModeText(runtime: runtime, templatesService: templatesService),
-            bodyText: activePodsIntensityText(runtime: runtime),
+            bodyText: bodyText,
             position: position,
             total: templatesService.templates.count
         )

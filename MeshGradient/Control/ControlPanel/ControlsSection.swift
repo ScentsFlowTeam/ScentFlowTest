@@ -43,7 +43,8 @@ struct ControlsSection: View {
                 ControlScreenView(
                     state: panel.playerDisplayState(
                         runtime: runtime,
-                        templatesService: app.templatesService
+                        templatesService: app.templatesService,
+                        size: size
                     ),
                     templateLength: templateLength,
                     isNaming: panel.showingCreateAlert,
@@ -183,7 +184,7 @@ struct ControlsSection: View {
                     width: UI.floatingCreateButtonSize,
                     height: UI.floatingCreateButtonSize
                 )
-                .background(.thickMaterial, in: Circle())
+                .adaptiveGlassBackground(Circle())
                 .contentShape(Circle())
                 .opacity(canCreateTemplate ? 1.0 : 0.45)
         }

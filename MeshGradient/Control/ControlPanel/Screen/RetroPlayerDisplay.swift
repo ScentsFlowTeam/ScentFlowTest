@@ -82,32 +82,38 @@ struct RetroPlayerDisplay: View {
     }
 
     private var header: some View {
-        ZStack(alignment: .trailing) {
-            if let modeText = state.modeText {
-                Text(modeText)
-                    .font(.system(.caption2, design: .monospaced).weight(.semibold))
-                    .foregroundStyle(headerColor.opacity(0.85))
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+        ZStack {
+            HStack(spacing: 8) {
+                if let modeText = state.modeText {
+                    Text(modeText)
+                        .font(.system(.caption2, design: .monospaced).weight(.semibold))
+                        .foregroundStyle(headerColor.opacity(0.85))
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 0)
+
+                if let counterText = state.counterText {
+                    Text(counterText)
+                        .font(.system(.caption2, design: .monospaced).weight(.semibold))
+                        .foregroundStyle(headerColor.opacity(0.9))
+                        .lineLimit(1)
+                        .monospacedDigit()
+                }
             }
 
-            Text(state.headerTitle)
-                .font(.system(.caption, design: .monospaced).weight(.semibold))
-                .foregroundStyle(headerColor)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 58)
-
-            if let counterText = state.counterText {
-                Text(counterText)
-                    .font(.system(.caption2, design: .monospaced).weight(.semibold))
-                    .foregroundStyle(headerColor.opacity(0.9))
+            if !state.headerTitle.isEmpty {
+                Text(state.headerTitle)
+                    .font(.system(.caption, design: .monospaced).weight(.semibold))
+                    .foregroundStyle(headerColor)
                     .lineLimit(1)
-                    .monospacedDigit()
+                    .minimumScaleFactor(0.75)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 58)
             }
         }
+        .frame(maxWidth: .infinity)
     }
 
     private var separator: some View {
