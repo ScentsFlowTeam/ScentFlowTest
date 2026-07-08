@@ -10,10 +10,10 @@ struct ControlPanel: View {
     @ObservedObject var runtime: DeviceRuntime
     @ObservedObject var templatesService: TemplatesService
     @ObservedObject var devicesService: DevicesService
-    @ObservedObject var panel: ControlPanelViewModel
 
     @Binding var segment: ControlPage.Segment
     @Binding var controlsSize: PodsControlSize
+    @Binding var isNamingTemplate: Bool
 
     let collapsedHeight: CGFloat
     let smallHeight: CGFloat
@@ -52,7 +52,7 @@ struct ControlPanel: View {
                             runtime: runtime,
                             device: device,
                             size: $controlsSize,
-                            panel: panel
+                            isNamingTemplate: $isNamingTemplate
                         )
                     } else {
                         VStack(spacing: 12) {
@@ -85,10 +85,12 @@ struct ControlPanel: View {
             .id(segment)
         }
 //        .padding(.horizontal, 12)
-        .frame(maxHeight: .infinity, alignment: .top)
+        // While naming a template the panel hugs its content (screen + Cancel/Create)
+        // so the card sits directly above the keyboard with no empty space.
+        .frame(maxHeight: isNamingTemplate ? nil : .infinity, alignment: .top)
 //        .background(.gray.opacity(0.15), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
 //        .background(.red, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
-        .frame(height: resolvedHeight, alignment: .bottom)
+        .frame(height: isNamingTemplate ? nil : resolvedHeight, alignment: .bottom)
 
         .animation(.bouncy, value: controlsSize)
     }

@@ -23,9 +23,9 @@ struct ControlPage: View {
     // panel both bind to `runtime`. `render` is the wheel's view-only projection.
     @StateObject private var runtime = DeviceRuntime()
     @StateObject private var render = WheelRenderModel()
-    @StateObject private var panel = ControlPanelViewModel()
 
     @State private var controlsSize: PodsControlSize = .small
+    @State private var isNamingTemplate = false
     @State private var didInitialLoad = false
     @State private var isHydratingVM = false
     @State private var allowsCirclePowerTransition = false
@@ -99,9 +99,9 @@ struct ControlPage: View {
                     runtime: runtime,
                     templatesService: app.templatesService,
                     devicesService: app.devicesService,
-                    panel: panel,
                     segment: $segment,
                     controlsSize: $controlsSize,
+                    isNamingTemplate: $isNamingTemplate,
                     collapsedHeight: UI.collapsedCardHeight,
                     smallHeight: UI.smallCardHeight
                 )
@@ -113,23 +113,6 @@ struct ControlPage: View {
             }
         }
 //        .background(.gray)
-        .overlay {
-            if panel.showingCreateAlert {
-                NewTemplateDialog(
-                    isPresented: $panel.showingCreateAlert,
-                    name: $panel.newTemplateName,
-                    onCreate: { name in
-                        panel.saveCurrentTemplate(
-                            named: name,
-                            runtime: runtime,
-                            templatesService: app.templatesService
-                        )
-                    }
-                )
-                .transition(.opacity)
-            }
-        }
-        .animation(.easeInOut(duration: 0.2), value: panel.showingCreateAlert)
         .navigationTitle(navigationDeviceName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)

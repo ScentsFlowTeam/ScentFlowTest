@@ -233,7 +233,7 @@ final class ControlPanelViewModel: ObservableObject {
         case .saved:
             return nil
         case .modified:
-            return "* Unsaved *"
+            return "*Unsaved*"
         }
     }
 
