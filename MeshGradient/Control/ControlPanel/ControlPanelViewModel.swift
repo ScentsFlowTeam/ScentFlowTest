@@ -4,8 +4,7 @@ import Combine
 
 @MainActor
 final class ControlPanelViewModel: ObservableObject {
-    @Published var showingSaveAlert = false
-    @Published var showingSaveOptions = false
+    @Published var showingCreateAlert = false
     @Published var newTemplateName = ""
     @Published var showingTemplatesPage = false
     @Published var listButtonBounceToken = 0
@@ -46,8 +45,21 @@ final class ControlPanelViewModel: ObservableObject {
         return templatesService.templates.first(where: { $0.id == sourceTemplateID })
     }
 
-    func canSaveTemplate(runtime: DeviceRuntime) -> Bool {
+    /// A new template can be created whenever there is a non-empty mix.
+    func canCreateTemplate(runtime: DeviceRuntime) -> Bool {
         !orderedIncludedPods(runtime: runtime).isEmpty
+    }
+
+    /// The save button is enabled only when the current mix has unsaved edits
+    /// relative to the template it came from (i.e. the `.modified` state).
+    func hasUnsavedEdits(
+        runtime: DeviceRuntime,
+        templatesService: TemplatesService
+    ) -> Bool {
+        if case .modified = templateMode(runtime: runtime, templatesService: templatesService) {
+            return true
+        }
+        return false
     }
 
     func saveActionTitle(
@@ -98,20 +110,20 @@ final class ControlPanelViewModel: ObservableObject {
         }
     }
 
+    /// Saves the current edits directly back onto the template being edited.
+    /// No prompt: only reachable when there are unsaved edits (a source exists).
     func handleSave(
         runtime: DeviceRuntime,
         templatesService: TemplatesService
     ) {
-        if sourceTemplate(runtime: runtime, templatesService: templatesService) != nil {
-            showingSaveOptions = true
-        } else {
-            beginSaveTemplate(prefilledName: "Mix \(templatesService.templates.count + 1)")
-        }
+        guard let source = sourceTemplate(runtime: runtime, templatesService: templatesService) else { return }
+        updateTemplate(source, runtime: runtime, templatesService: templatesService)
     }
 
-    func beginSaveTemplate(prefilledName: String) {
-        newTemplateName = prefilledName
-        showingSaveAlert = true
+    /// Opens the create-new-template alert prefilled with the next "Mix N" name.
+    func beginCreateTemplate(templatesService: TemplatesService) {
+        newTemplateName = "Mix \(templatesService.templates.count + 1)"
+        showingCreateAlert = true
     }
 
     func saveCurrentTemplate(

@@ -33,10 +33,12 @@ struct ControlsSection: View {
                 runtime: runtime,
                 templateLength: templateLength,
                 size: $size,
-                canSaveTemplate: runtime.isPowerOn && panel.canSaveTemplate(runtime: runtime),
-                saveActionTitle: panel.saveActionTitle(runtime: runtime, templatesService: app.templatesService),
+                canSaveTemplate: runtime.isPowerOn && panel.hasUnsavedEdits(runtime: runtime, templatesService: app.templatesService),
+                saveActionTitle: "Save Template",
                 saveSystemName: panel.saveSystemName(),
+                canCreateTemplate: runtime.isPowerOn && panel.canCreateTemplate(runtime: runtime),
                 onSaveTemplate: { panel.handleSave(runtime: runtime, templatesService: app.templatesService) },
+                onCreateTemplate: { panel.beginCreateTemplate(templatesService: app.templatesService) },
                 onStartTemplateLength: { panel.setTemplateLength($0, runtime: runtime) },
                 onClearTemplateLength: { panel.clearTemplateLength(runtime: runtime) },
                 onPodIntensityChanged: panel.showAdjustingPod,
@@ -60,33 +62,12 @@ struct ControlsSection: View {
         .frame(maxWidth: .infinity, alignment: .top)
         .contentShape(Rectangle())
         .simultaneousGesture(expansionDragGesture)
-        .sheet(isPresented: $panel.showingSaveOptions) {
-            if let sourceTemplate = panel.sourceTemplate(runtime: runtime, templatesService: app.templatesService) {
-                SaveTemplateOptionsMenu(
-                    sourceTemplate: sourceTemplate,
-                    onUpdate: {
-                        panel.showingSaveOptions = false
-                        panel.updateTemplate(
-                            sourceTemplate,
-                            runtime: runtime,
-                            templatesService: app.templatesService
-                        )
-                    },
-                    onSaveAsNew: {
-                        panel.showingSaveOptions = false
-                        panel.beginSaveTemplate(prefilledName: "\(sourceTemplate.name) Copy")
-                    }
-                )
-                .presentationDetents([.height(170)])
-                .presentationDragIndicator(.visible)
-            }
-        }
-        .alert("New Template", isPresented: $panel.showingSaveAlert) {
+        .alert("New Template", isPresented: $panel.showingCreateAlert) {
             TextField("Template name", text: $panel.newTemplateName)
                 .textInputAutocapitalization(.words)
                 .disableAutocorrection(true)
 
-            Button("Save") {
+            Button("Create") {
                 let name = panel.newTemplateName.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !name.isEmpty else { return }
                 panel.saveCurrentTemplate(
@@ -96,11 +77,9 @@ struct ControlsSection: View {
                 )
             }
 
-            Button("Cancel", role: .cancel) {
-                panel.newTemplateName = ""
-            }
+            Button("Cancel", role: .cancel) { }
         } message: {
-            Text("Enter a name for this scent mix.")
+            Text("Name your scent mix.")
         }
         .navigationDestination(isPresented: $panel.showingTemplatesPage) {
             TemplatesPage(
