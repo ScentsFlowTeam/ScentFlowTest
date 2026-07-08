@@ -18,39 +18,56 @@ struct ScentControllerStepper: View {
                 Text("\(focused.name)")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    
             }
 
             Spacer()
 
-            // Custom stepper — kept for reference, using the default `Stepper` instead.
-//            InlineStepper(
-//                value: $value,
-//                range: AppConfig.minIntensity ... AppConfig.maxIntensity,
-//                step: AppConfig.maxIntensity * 0.25,
-//                format: { v in
-//                    // Show a clear, bold percentage
-//                    "\(Int((v / AppConfig.maxIntensity) * 100))%"
-//                }
-//            )
-//            .padding(.leading, 12)
-//            .disabled(focused == nil)
-//            .opacity(focused == nil ? 0.45 : 1.0)
+            // Percentage label kept on the left of the controls.
+            Text("\(Int((value / AppConfig.maxIntensity) * 100))%")
+                .font(.subheadline)
+                .monospacedDigit()
+                .contentTransition(.numericText())
+                .animation(.snappy, value: value)
 
-            Stepper(
-                value: $value,
-                in: AppConfig.minIntensity ... AppConfig.maxIntensity,
-                step: AppConfig.maxIntensity * 0.25
-            ) {
-                Text("\(Int((value / AppConfig.maxIntensity) * 100))%")
-                    .font(.subheadline)
-                    .monospacedDigit()
-            }
-            .fixedSize()
-            .padding(.leading, 12)
-            .disabled(focused == nil)
-            .opacity(focused == nil ? 0 : 1.0)
+            // Custom stepper styled with a thickMaterial capsule to match the
+            // infinity / save / undo / redo buttons.
+            stepperButtons
+                .padding(.leading, 12)
+                .disabled(focused == nil)
         }
-        
+        .opacity(focused == nil ? 0 : 1.0)
+    }
 
+    private var stepperButtons: some View {
+        HStack(spacing: 0) {
+            Button {
+                value = max(AppConfig.minIntensity, value - AppConfig.maxIntensity * 0.25)
+            } label: {
+                Image(systemName: "minus")
+                    .foregroundStyle(.primary)
+                    .frame(width: 30, height: 30)
+                    .contentShape(Rectangle())
+                    .accessibilityLabel("Decrease")
+            }
+            .buttonStyle(.plain)
+
+            Divider()
+                .frame(height: 22)
+                .opacity(0.4)
+
+            Button {
+                value = min(AppConfig.maxIntensity, value + AppConfig.maxIntensity * 0.25)
+            } label: {
+                Image(systemName: "plus")
+                    .foregroundStyle(.primary)
+                    .frame(width: 30, height: 30)
+                    .contentShape(Rectangle())
+                    .accessibilityLabel("Increase")
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(height: 30)
+        .background(.thickMaterial, in: Capsule())
     }
 }

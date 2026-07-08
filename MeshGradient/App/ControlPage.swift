@@ -23,6 +23,7 @@ struct ControlPage: View {
     // panel both bind to `runtime`. `render` is the wheel's view-only projection.
     @StateObject private var runtime = DeviceRuntime()
     @StateObject private var render = WheelRenderModel()
+    @StateObject private var panel = ControlPanelViewModel()
 
     @State private var controlsSize: PodsControlSize = .small
     @State private var didInitialLoad = false
@@ -98,6 +99,7 @@ struct ControlPage: View {
                     runtime: runtime,
                     templatesService: app.templatesService,
                     devicesService: app.devicesService,
+                    panel: panel,
                     segment: $segment,
                     controlsSize: $controlsSize,
                     collapsedHeight: UI.collapsedCardHeight,
@@ -105,12 +107,29 @@ struct ControlPage: View {
                 )
 //                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .containerShape(.rect(cornerRadius: ControlCornerStyle.radius, style: .continuous))
-                .padding(.horizontal, UI.cardHPad)
+                .padding(.horizontal, UI.cardHPad * 2)
                 .padding(.bottom, UI.cardBottomPad)
 //                .shadow(radius: 6)
             }
         }
-
+//        .background(.gray)
+        .overlay {
+            if panel.showingCreateAlert {
+                NewTemplateDialog(
+                    isPresented: $panel.showingCreateAlert,
+                    name: $panel.newTemplateName,
+                    onCreate: { name in
+                        panel.saveCurrentTemplate(
+                            named: name,
+                            runtime: runtime,
+                            templatesService: app.templatesService
+                        )
+                    }
+                )
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: panel.showingCreateAlert)
         .navigationTitle(navigationDeviceName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)

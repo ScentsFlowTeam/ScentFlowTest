@@ -10,6 +10,7 @@ struct ControlPanel: View {
     @ObservedObject var runtime: DeviceRuntime
     @ObservedObject var templatesService: TemplatesService
     @ObservedObject var devicesService: DevicesService
+    @ObservedObject var panel: ControlPanelViewModel
 
     @Binding var segment: ControlPage.Segment
     @Binding var controlsSize: PodsControlSize
@@ -50,7 +51,8 @@ struct ControlPanel: View {
                         ControlsSection(
                             runtime: runtime,
                             device: device,
-                            size: $controlsSize
+                            size: $controlsSize,
+                            panel: panel
                         )
                     } else {
                         VStack(spacing: 12) {
@@ -82,9 +84,10 @@ struct ControlPanel: View {
             }
             .id(segment)
         }
-        .padding(.horizontal, 12)
+//        .padding(.horizontal, 12)
         .frame(maxHeight: .infinity, alignment: .top)
-        .background(.gray.opacity(0.15), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+//        .background(.gray.opacity(0.15), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+//        .background(.red, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
         .frame(height: resolvedHeight, alignment: .bottom)
 
         .animation(.bouncy, value: controlsSize)

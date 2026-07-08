@@ -120,6 +120,17 @@ final class ControlPanelViewModel: ObservableObject {
         updateTemplate(source, runtime: runtime, templatesService: templatesService)
     }
 
+    /// Discards all unsaved edits by re-applying the source template, which
+    /// restores the saved mix and clears the edit history.
+    func handleRevert(
+        runtime: DeviceRuntime,
+        templatesService: TemplatesService,
+        device: Device
+    ) {
+        guard let source = sourceTemplate(runtime: runtime, templatesService: templatesService) else { return }
+        runtime.applyTemplate(source, on: device)
+    }
+
     /// Opens the create-new-template alert prefilled with the next "Mix N" name.
     func beginCreateTemplate(templatesService: TemplatesService) {
         newTemplateName = "Mix \(templatesService.templates.count + 1)"
@@ -222,7 +233,7 @@ final class ControlPanelViewModel: ObservableObject {
         case .saved:
             return nil
         case .modified:
-            return "Unsaved"
+            return "* Unsaved *"
         }
     }
 

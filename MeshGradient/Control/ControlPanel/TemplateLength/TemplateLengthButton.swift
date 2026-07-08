@@ -17,7 +17,9 @@ struct TemplateLengthButton: View {
         } label: {
             buttonLabel
                 .foregroundStyle(timerForeground)
-                .frame(width: 64, height: 44)
+                .frame(minWidth: 64)
+                .frame(height: 34)
+                .padding(.horizontal, 14)
                 .background(timerBackground, in: Capsule())
                 .contentShape(Capsule())
                 .opacity((isDeviceOn || controller.isActive) ? 1.0 : 0.45)
@@ -187,7 +189,7 @@ struct TemplateLengthButton: View {
                 .monospacedDigit()
         } else {
             Image(systemName: "infinity")
-                .font(.system(size: 17, weight: .semibold))
+                .font(.system(size: 14, weight: .semibold))
         }
     }
 
@@ -204,15 +206,11 @@ struct TemplateLengthButton: View {
         }
     }
 
-    // Accent-tinted while a length is running, neutral material otherwise.
     private var timerBackground: AnyShapeStyle {
-        controller.isActive
-            ? AnyShapeStyle(Color.accentColor.opacity(0.25))
-            : AnyShapeStyle(.thickMaterial)
+        AnyShapeStyle(.thickMaterial)
     }
 
     private var timerForeground: Color {
-        if controller.isActive { return .accentColor }
-        return (isDeviceOn || controller.isActive) ? .primary : .secondary
+        (isDeviceOn || controller.isActive) ? .primary : .secondary
     }
 }

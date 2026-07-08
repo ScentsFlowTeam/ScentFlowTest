@@ -102,7 +102,7 @@ struct DeviceCard: View {
                     animate: true,
                     isTemplate: true
                 )
-                .frame(width: 40, height: 40)
+                .frame(width: 36, height: 36)
 //                    .shadow(color: .white, radius: 5)
             }
 

@@ -5,8 +5,8 @@ struct ControlsSection: View {
     @ObservedObject var runtime: DeviceRuntime
     let device: Device
     @Binding var size: PodsControlSize
+    @ObservedObject var panel: ControlPanelViewModel
 
-    @StateObject private var panel = ControlPanelViewModel()
     @StateObject private var templateLength = TemplateLengthController()
 
     private enum UI {
@@ -15,72 +15,75 @@ struct ControlsSection: View {
         // Minimum vertical drag to step one size; a larger drag jumps two sizes.
         static let expansionDragThreshold: CGFloat = 28
         static let bigDragThreshold: CGFloat = 120
+        static let floatingCreateButtonSize: CGFloat = 58
+    }
+
+    private var canCreateTemplate: Bool {
+        runtime.isPowerOn
+            && panel.canCreateTemplate(runtime: runtime)
+            && !panel.hasUnsavedEdits(runtime: runtime, templatesService: app.templatesService)
     }
 
     var body: some View {
-        VStack(spacing: UI.sectionSpacing) {
-            ControlScreenView(
-                state: panel.playerDisplayState(
-                    runtime: runtime,
-                    templatesService: app.templatesService
-                ),
-                templateLength: templateLength
-            )
-            .padding(.horizontal, -UI.horizontalBleed)
-            .zIndex(1)
-
-            PodsControlView(
-                runtime: runtime,
-                templateLength: templateLength,
-                size: $size,
-                canSaveTemplate: runtime.isPowerOn && panel.hasUnsavedEdits(runtime: runtime, templatesService: app.templatesService),
-                saveActionTitle: "Save Template",
-                saveSystemName: panel.saveSystemName(),
-                canCreateTemplate: runtime.isPowerOn && panel.canCreateTemplate(runtime: runtime),
-                onSaveTemplate: { panel.handleSave(runtime: runtime, templatesService: app.templatesService) },
-                onCreateTemplate: { panel.beginCreateTemplate(templatesService: app.templatesService) },
-                onStartTemplateLength: { panel.setTemplateLength($0, runtime: runtime) },
-                onClearTemplateLength: { panel.clearTemplateLength(runtime: runtime) },
-                onPodIntensityChanged: panel.showAdjustingPod,
-                onPodSelected: panel.showAdjustingPod
-            )
-
-            ControlTransportSection(
-                runtime: runtime,
-                templatesService: app.templatesService,
-                listButtonBounceToken: panel.listButtonBounceToken,
-                onPreviousTemplate: {
-                    app.applyPreviousTemplate(to: runtime, on: device)
-                },
-                onNextTemplate: {
-                    app.applyNextTemplate(to: runtime, on: device)
-                },
-                onOpenTemplateList: { panel.showingTemplatesPage = true }
-            )
-            .padding(.horizontal, -UI.horizontalBleed)
-        }
-        .frame(maxWidth: .infinity, alignment: .top)
-        .contentShape(Rectangle())
-        .simultaneousGesture(expansionDragGesture)
-        .alert("New Template", isPresented: $panel.showingCreateAlert) {
-            TextField("Template name", text: $panel.newTemplateName)
-                .textInputAutocapitalization(.words)
-                .disableAutocorrection(true)
-
-            Button("Create") {
-                let name = panel.newTemplateName.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !name.isEmpty else { return }
-                panel.saveCurrentTemplate(
-                    named: name,
-                    runtime: runtime,
-                    templatesService: app.templatesService
-                )
+        VStack {
+            // Button
+            HStack {
+                Spacer(minLength: 0)
+                floatingCreateTemplateButton
             }
+            .padding(.horizontal, -UI.horizontalBleed)
+            
+            // Screen + Pods + ControlTransport
+            VStack(spacing: 0) {
+                ControlScreenView(
+                    state: panel.playerDisplayState(
+                        runtime: runtime,
+                        templatesService: app.templatesService
+                    ),
+                    templateLength: templateLength
+                )
+                .padding(.horizontal, -UI.horizontalBleed)
+//                .zIndex(1)
 
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("Name your scent mix.")
+                PodsControlView(
+                    runtime: runtime,
+                    templateLength: templateLength,
+                    size: $size,
+                    canSaveTemplate: runtime.isPowerOn && panel.hasUnsavedEdits(runtime: runtime, templatesService: app.templatesService),
+                    saveActionTitle: "Save Template",
+                    saveSystemName: panel.saveSystemName(),
+                    onSaveTemplate: { panel.handleSave(runtime: runtime, templatesService: app.templatesService) },
+                    onRevertChanges: { panel.handleRevert(runtime: runtime, templatesService: app.templatesService, device: device) },
+                    onStartTemplateLength: { panel.setTemplateLength($0, runtime: runtime) },
+                    onClearTemplateLength: { panel.clearTemplateLength(runtime: runtime) },
+                    onPodIntensityChanged: panel.showAdjustingPod,
+                    onPodSelected: panel.showAdjustingPod
+                )
+
+
+                ControlTransportSection(
+                    runtime: runtime,
+                    templatesService: app.templatesService,
+                    listButtonBounceToken: panel.listButtonBounceToken,
+                    onPreviousTemplate: {
+                        app.applyPreviousTemplate(to: runtime, on: device)
+                    },
+                    onNextTemplate: {
+                        app.applyNextTemplate(to: runtime, on: device)
+                    },
+                    onOpenTemplateList: { panel.showingTemplatesPage = true }
+                )
+                .padding(.horizontal, -UI.horizontalBleed)
+            }
+//            
+            .background(.regularMaterial)
         }
+//
+//        .frame(maxWidth: .infinity, alignment: .top)
+//        .contentShape(Rectangle())
+//        .background(.red)
+        
+        .simultaneousGesture(expansionDragGesture)
         .navigationDestination(isPresented: $panel.showingTemplatesPage) {
             TemplatesPage(
                 templatesService: app.templatesService,
@@ -98,6 +101,27 @@ struct ControlsSection: View {
                 app.playNextTemplateOnFinish(to: runtime, on: device)
             }
         }
+    }
+
+    private var floatingCreateTemplateButton: some View {
+        Button {
+            guard canCreateTemplate else { return }
+            panel.beginCreateTemplate(templatesService: app.templatesService)
+        } label: {
+            Image(systemName: "plus")
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(canCreateTemplate ? .primary : .secondary)
+                .frame(
+                    width: UI.floatingCreateButtonSize,
+                    height: UI.floatingCreateButtonSize
+                )
+                .background(.thickMaterial, in: Circle())
+                .contentShape(Circle())
+                .opacity(canCreateTemplate ? 1.0 : 0.45)
+        }
+        .buttonStyle(.plain)
+        .disabled(!canCreateTemplate)
+        .accessibilityLabel("New template")
     }
 
     private var expansionDragGesture: some Gesture {
