@@ -32,6 +32,21 @@ final class DeviceRuntime: ObservableObject {
     @Published private(set) var templateLengthDuration: TimeInterval?
     @Published private(set) var templateLengthStartDate: Date?
 
+    // MARK: - Pod edit history
+    @Published private(set) var canUndoEdit = false
+    @Published private(set) var canRedoEdit = false
+
+    private struct PodEditSnapshot: Equatable {
+        let included: Set<UUID>
+        let opacities: [UUID: Double]
+        let focusedPodID: UUID?
+        let currentTemplateID: UUID?
+    }
+
+    private var undoStack: [PodEditSnapshot] = []
+    private var redoStack: [PodEditSnapshot] = []
+    private let maxEditHistoryCount = 40
+
     // MARK: - Derived
     var orderedPodIDs: [UUID] { pods.map(\.id) }
     var isUsingTemplate: Bool { currentTemplateID != nil }
@@ -41,6 +56,7 @@ final class DeviceRuntime: ObservableObject {
     func updateDevicePods(_ pods: [ScentPod]) {
         self.pods = pods
         ensureFocusedPodIsValid()
+        clearEditHistory()
     }
 
     // MARK: - Power & fan
@@ -56,6 +72,7 @@ final class DeviceRuntime: ObservableObject {
     func setCurrentTemplateID(_ id: UUID?) {
         currentTemplateID = id
         sourceTemplateID = id
+        clearEditHistory()
     }
 
     func markCurrentTemplateModified() {
@@ -82,6 +99,7 @@ final class DeviceRuntime: ObservableObject {
             templateLengthStartDate = nil
             fanSpeed = 0.5
             isPowerOn = false
+            clearEditHistory()
             return
         }
 
@@ -103,6 +121,7 @@ final class DeviceRuntime: ObservableObject {
         templateLengthStartDate = templateDuration == nil ? nil : Date()
 
         ensureFocusedPodIsValid()
+        clearEditHistory()
     }
 
     // MARK: - Pod selection / intensity
@@ -110,6 +129,7 @@ final class DeviceRuntime: ObservableObject {
         let oldIncluded = included
 
         if included.contains(podID) {
+            recordEditSnapshot()
             if focusedPodID == podID {
                 included.remove(podID)
                 opacities[podID] = nil
@@ -118,6 +138,7 @@ final class DeviceRuntime: ObservableObject {
             }
         } else {
             guard canSelectMore else { return }
+            recordEditSnapshot()
             included.insert(podID)
             focusedPodID = podID
             opacities[podID] = opacities[podID] ?? (AppConfig.maxIntensity * 0.5)
@@ -127,16 +148,19 @@ final class DeviceRuntime: ObservableObject {
         ensureFocusedPodIsValid()
     }
 
-    func setPod(_ podID: UUID, isIncluded shouldInclude: Bool) {
+    func setPod(_ podID: UUID, isIncluded shouldInclude: Bool, initialOpacity: Double? = nil) {
         let oldIncluded = included
+        let clampedInitialOpacity = initialOpacity.map { max(0.0, min(AppConfig.maxIntensity, $0)) }
 
         if shouldInclude {
             guard !included.contains(podID), canSelectMore else { return }
+            recordEditSnapshot()
             included.insert(podID)
             focusedPodID = podID
-            opacities[podID] = opacities[podID] ?? (AppConfig.maxIntensity * 0.5)
+            opacities[podID] = clampedInitialOpacity ?? opacities[podID] ?? (AppConfig.maxIntensity * 0.5)
         } else {
             guard included.contains(podID) else { return }
+            recordEditSnapshot()
             included.remove(podID)
             opacities[podID] = nil
         }
@@ -148,8 +172,65 @@ final class DeviceRuntime: ObservableObject {
     func setOpacity(_ value: Double, for podID: UUID) {
         let clamped = max(0.0, min(AppConfig.maxIntensity, value))
         let oldValue = opacities[podID] ?? 0
-        if abs(oldValue - clamped) > 0.0001 { currentTemplateID = nil }
+        guard abs(oldValue - clamped) > 0.0001 else { return }
+
+        recordEditSnapshot()
+        currentTemplateID = nil
         opacities[podID] = clamped
+    }
+
+    func undoEdit() {
+        guard let snapshot = undoStack.popLast() else { return }
+        redoStack.append(currentEditSnapshot)
+        restoreEditSnapshot(snapshot)
+        updateEditHistoryAvailability()
+    }
+
+    func redoEdit() {
+        guard let snapshot = redoStack.popLast() else { return }
+        undoStack.append(currentEditSnapshot)
+        restoreEditSnapshot(snapshot)
+        updateEditHistoryAvailability()
+    }
+
+    private var currentEditSnapshot: PodEditSnapshot {
+        PodEditSnapshot(
+            included: included,
+            opacities: opacities,
+            focusedPodID: focusedPodID,
+            currentTemplateID: currentTemplateID
+        )
+    }
+
+    private func recordEditSnapshot() {
+        let snapshot = currentEditSnapshot
+        guard undoStack.last != snapshot else { return }
+
+        undoStack.append(snapshot)
+        if undoStack.count > maxEditHistoryCount {
+            undoStack.removeFirst(undoStack.count - maxEditHistoryCount)
+        }
+        redoStack.removeAll()
+        updateEditHistoryAvailability()
+    }
+
+    private func restoreEditSnapshot(_ snapshot: PodEditSnapshot) {
+        included = snapshot.included
+        opacities = snapshot.opacities.filter { included.contains($0.key) }
+        focusedPodID = snapshot.focusedPodID
+        currentTemplateID = snapshot.currentTemplateID
+        ensureFocusedPodIsValid()
+    }
+
+    private func clearEditHistory() {
+        undoStack.removeAll()
+        redoStack.removeAll()
+        updateEditHistoryAvailability()
+    }
+
+    private func updateEditHistoryAvailability() {
+        canUndoEdit = !undoStack.isEmpty
+        canRedoEdit = !redoStack.isEmpty
     }
 
     private func ensureFocusedPodIsValid() {
@@ -218,6 +299,7 @@ final class DeviceRuntime: ObservableObject {
         isPowerOn = s.isPowerOn
         setFanSpeed(s.fanSpeed)
         ensureFocusedPodIsValid()
+        clearEditHistory()
     }
 }
 
