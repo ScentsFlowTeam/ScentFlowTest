@@ -89,16 +89,16 @@ final class ControlPanelViewModel: ObservableObject {
             templatesService.templates.firstIndex(where: { $0.id == template.id }).map { $0 + 1 }
         }
 
-        // Folded (small) shows just the template title in the body — the per-pod
-        // percentages are only useful once the control is expanded.
-        let bodyText = size == .small
-            ? displayTemplateTitle(runtime: runtime, templatesService: templatesService)
-            : activePodsIntensityText(runtime: runtime)
+        // Folded (small) shows just the template title in the body. Expanded
+        // states show a compact two-column readout for all active pods.
+        let body: RetroPlayerDisplay.BodyContent = size == .small
+            ? .text(displayTemplateTitle(runtime: runtime, templatesService: templatesService))
+            : expandedPodBody(runtime: runtime)
 
         return .playing(
             title: size == .small ? "" : displayTemplateTitle(runtime: runtime, templatesService: templatesService),
             modeText: displayModeText(runtime: runtime, templatesService: templatesService),
-            bodyText: bodyText,
+            body: body,
             position: position,
             total: templatesService.templates.count
         )
@@ -244,24 +244,34 @@ final class ControlPanelViewModel: ObservableObject {
         }
     }
 
-    private func activePodsIntensityText(runtime: DeviceRuntime) -> String {
+    private func expandedPodBody(runtime: DeviceRuntime) -> RetroPlayerDisplay.BodyContent {
         if let adjustingPodText {
-            return adjustingPodText
+            return .expandedText(adjustingPodText)
         }
 
-        let activePods = runtime.pods.filter { runtime.included.contains($0.id) }
-        guard !activePods.isEmpty else { return "No active pods" }
+        let activePods = Array(orderedIncludedPods(runtime: runtime))
+        guard !activePods.isEmpty else { return .text("No active pods") }
 
-        return activePods
-            .map { pod in intensityText(for: pod, value: runtime.opacities[pod.id] ?? 0) }
-            .joined(separator: "  ")
+        return .pods(
+            activePods.prefix(6).map { pod in
+                RetroPlayerDisplay.PodBodyItem(
+                    id: pod.id,
+                    name: pod.name,
+                    percentText: intensityPercentText(for: pod, value: runtime.opacities[pod.id] ?? 0)
+                )
+            }
+        )
     }
 
     private func intensityText(for pod: ScentPod, value: Double) -> String {
+        "\(pod.name): \(intensityPercentText(for: pod, value: value))"
+    }
+
+    private func intensityPercentText(for pod: ScentPod, value: Double) -> String {
         let maxIntensity = max(0.0001, AppConfig.maxIntensity)
         let clamped = min(max(value, 0), maxIntensity)
         let percent = Int((clamped / maxIntensity * 100).rounded())
-        return "\(pod.name): \(percent)%"
+        return "\(percent)%"
     }
 
     private func currentTemplateDuration(runtime: DeviceRuntime) -> TimeInterval? {

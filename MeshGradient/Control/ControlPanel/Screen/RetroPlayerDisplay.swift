@@ -1,9 +1,21 @@
 import SwiftUI
 
 struct RetroPlayerDisplay: View {
+    struct PodBodyItem: Equatable, Identifiable {
+        let id: UUID
+        let name: String
+        let percentText: String
+    }
+
+    enum BodyContent: Equatable {
+        case text(String)
+        case expandedText(String)
+        case pods([PodBodyItem])
+    }
+
     enum DisplayState: Equatable {
         case deviceOff(title: String)
-        case playing(title: String, modeText: String?, bodyText: String, position: Int?, total: Int)
+        case playing(title: String, modeText: String?, body: BodyContent, position: Int?, total: Int)
 
         var headerTitle: String {
             switch self {
@@ -23,12 +35,12 @@ struct RetroPlayerDisplay: View {
             }
         }
 
-        var bodyText: String {
+        var body: BodyContent {
             switch self {
             case .deviceOff:
-                return "Device Off"
-            case .playing(_, _, let bodyText, _, _):
-                return bodyText
+                return .text("Device Off")
+            case .playing(_, _, let body, _, _):
+                return body
             }
         }
 
@@ -49,7 +61,21 @@ struct RetroPlayerDisplay: View {
     private enum UI {
         static let separatorHeight: CGFloat = 1
         static let timerDotSize: CGFloat = 6
-        static let displayHeight: CGFloat = 96
+        static let compactDisplayHeight: CGFloat = 96
+        static let expandedDisplayHeight: CGFloat = 116
+        static let podRowCount = 3
+        static let maxPodCount = 6
+        static let podRowHeight: CGFloat = 16
+        static let podPercentWidth: CGFloat = 38
+    }
+
+    private var displayHeight: CGFloat {
+        switch state.body {
+        case .text:
+            return UI.compactDisplayHeight
+        case .expandedText, .pods:
+            return UI.expandedDisplayHeight
+        }
     }
 
     var body: some View {
@@ -67,7 +93,7 @@ struct RetroPlayerDisplay: View {
             footer
                 .frame(height: 18)
         }
-        .frame(maxWidth: .infinity, minHeight: UI.displayHeight, maxHeight: UI.displayHeight, alignment: .center)
+        .frame(maxWidth: .infinity, minHeight: displayHeight, maxHeight: displayHeight, alignment: .center)
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background {
@@ -139,16 +165,68 @@ struct RetroPlayerDisplay: View {
         .frame(height: UI.timerDotSize)
     }
 
+    @ViewBuilder
     private var mainContent: some View {
-        Text(state.bodyText)
-            .font(.system(.callout, design: .monospaced).weight(.semibold))
-            .foregroundStyle(primaryDisplayColor)
-            .lineLimit(1)
-            .minimumScaleFactor(0.62)
-            .frame(maxWidth: .infinity, alignment: .center)
-            .multilineTextAlignment(.center)
-            .opacity(bodyTextOpacity)
-            .padding(.horizontal, 2)
+        switch state.body {
+        case .text(let text), .expandedText(let text):
+            Text(text)
+                .font(.system(.callout, design: .monospaced).weight(.semibold))
+                .foregroundStyle(primaryDisplayColor)
+                .lineLimit(1)
+                .minimumScaleFactor(0.62)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .multilineTextAlignment(.center)
+                .opacity(bodyTextOpacity)
+                .padding(.horizontal, 2)
+        case .pods(let items):
+            podGrid(items)
+        }
+    }
+
+    private func podGrid(_ items: [PodBodyItem]) -> some View {
+        VStack(spacing: 2) {
+            ForEach(0..<UI.podRowCount, id: \.self) { rowIndex in
+                HStack(spacing: 8) {
+                    podCell(podItem(in: items, at: rowIndex * 2))
+
+                    Text("||")
+                        .font(.system(.caption2, design: .monospaced).weight(.semibold))
+                        .foregroundStyle(headerColor.opacity(0.72))
+                        .frame(width: 18)
+
+                    podCell(podItem(in: items, at: rowIndex * 2 + 1))
+                }
+                .frame(height: UI.podRowHeight)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.horizontal, 2)
+    }
+
+    private func podCell(_ item: PodBodyItem?) -> some View {
+        HStack(spacing: 5) {
+            Text(item?.name ?? "")
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text("|")
+                .foregroundStyle(headerColor.opacity(0.65))
+
+            Text(item?.percentText ?? "")
+                .lineLimit(1)
+                .monospacedDigit()
+                .frame(width: UI.podPercentWidth, alignment: .trailing)
+        }
+        .font(.system(.caption, design: .monospaced).weight(.semibold))
+        .foregroundStyle(primaryDisplayColor)
+        .opacity(item == nil ? 0 : 1)
+        .frame(maxWidth: .infinity)
+    }
+
+    private func podItem(in items: [PodBodyItem], at index: Int) -> PodBodyItem? {
+        guard index < min(items.count, UI.maxPodCount) else { return nil }
+        return items[index]
     }
 
     private var footer: some View {
@@ -205,12 +283,10 @@ struct RetroPlayerDisplay: View {
     }
 
     private var bodyTextOpacity: Double {
-        switch state {
-        case .deviceOff:
-            return 1.0
-        case .playing(_, _, let bodyText, _, _) where bodyText == "No active pods":
+        switch state.body {
+        case .text("No active pods"):
             return 0.72
-        case .playing:
+        case .text, .expandedText, .pods:
             return 1.0
         }
     }
